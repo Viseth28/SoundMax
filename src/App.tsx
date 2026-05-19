@@ -22,6 +22,7 @@ export default function App() {
   const [presetName, setPresetName] = useState("Default");
   const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const [exportConfig, setExportConfig] = useState({
     format: 'WAV 16-bit',
     sampleRate: 44100,
@@ -76,10 +77,7 @@ export default function App() {
     return await audioContextRef.current!.decodeAudioData(arrayBuffer);
   };
 
-  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (!event.target.files) return;
-    const newFiles = Array.from(event.target.files);
-    
+  const processFiles = async (newFiles: File[]) => {
     for (const file of newFiles) {
       if (file.type.startsWith('audio/')) {
         const id = Math.random().toString(36).substring(7);
@@ -93,6 +91,28 @@ export default function App() {
         setFiles(prev => prev.map(f => f.id === id ? { ...f, duration: buffer.duration, buffer } : f));
       }
     }
+  };
+
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (!event.target.files) return;
+    await processFiles(Array.from(event.target.files));
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+  };
+
+  const handleDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    if (!e.dataTransfer.files) return;
+    await processFiles(Array.from(e.dataTransfer.files));
   };
 
   const togglePlayback = (id: string) => {
@@ -226,7 +246,12 @@ export default function App() {
       <div className="flex-1 flex flex-col p-6 overflow-hidden gap-6">
         
         {/* Batch Queue Panel */}
-        <div className="flex-1 bg-zinc-900 rounded-xl border border-zinc-800 flex flex-col overflow-hidden shadow-lg relative">
+        <div 
+          className={`flex-1 rounded-xl border flex flex-col overflow-hidden shadow-lg relative transition-colors ${isDragging ? 'bg-zinc-800 border-amber-500' : 'bg-zinc-900 border-zinc-800'}`}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDrop={handleDrop}
+        >
           <div className="px-4 py-3 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/80 backdrop-blur-sm z-10">
             <h2 className="text-sm font-semibold text-zinc-300">BATCH QUEUE</h2>
             <label className="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-slate-600 rounded text-xs transition-colors">
