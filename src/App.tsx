@@ -134,6 +134,14 @@ export default function App() {
     }
   };
 
+  const removeFile = (id: string) => {
+    if (playingId === id) {
+      audioGraphRef.current?.stop();
+      setPlayingId(null);
+    }
+    setFiles(prev => prev.filter(f => f.id !== id));
+  };
+
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>, key: keyof AudioParameters) => {
     setParams(prev => ({ ...prev, [key]: parseFloat(e.target.value) }));
     setPresetName("Custom");
@@ -273,7 +281,7 @@ export default function App() {
                     <th className="pb-2 font-medium w-24">Duration</th>
                     <th className="pb-2 font-medium w-24">Type</th>
                     <th className="pb-2 font-medium w-32">Status</th>
-                    <th className="pb-2 font-medium w-16 text-right">Preview</th>
+                    <th className="pb-2 font-medium w-24 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -294,9 +302,14 @@ export default function App() {
                         </span>
                       </td>
                       <td className="py-3 text-right">
-                        <button onClick={() => togglePlayback(f.id)} disabled={!f.buffer} className="p-2 bg-zinc-800 hover:bg-amber-600 rounded-full transition-colors disabled:opacity-50">
-                          {playingId === f.id ? <Pause size={14} className="text-white" /> : <Play size={14} className="text-white ml-0.5" />}
-                        </button>
+                        <div className="flex items-center justify-end gap-2">
+                          <button onClick={() => togglePlayback(f.id)} disabled={!f.buffer} title="Preview" className="p-2 bg-zinc-800 hover:bg-amber-600 rounded-full transition-colors disabled:opacity-50">
+                            {playingId === f.id ? <Pause size={14} className="text-white" /> : <Play size={14} className="text-white ml-0.5" />}
+                          </button>
+                          <button onClick={() => removeFile(f.id)} title="Remove" className="p-2 bg-zinc-800 hover:bg-red-500 rounded-full transition-colors opacity-50 hover:opacity-100 group-hover:opacity-100">
+                            <X size={14} className="text-zinc-300 hover:text-white" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))}
