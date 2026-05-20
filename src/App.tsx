@@ -175,8 +175,9 @@ export default function App() {
   const executeExport = async () => {
     setShowExportModal(false);
     
-    // Process all files in queue sequentially
-    for (const file of files) {
+    try {
+      // Process all files in queue sequentially
+      for (const file of files) {
       if (!file.buffer) continue;
       
       setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Processing' } : f));
@@ -227,7 +228,13 @@ export default function App() {
       a.click();
       URL.revokeObjectURL(url);
       
-      setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Completed' } : f));
+      
+        setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Completed' } : f));
+      }
+    } catch (error) {
+      console.error("Export failed:", error);
+      alert(`Export failed: ${error instanceof Error ? error.message : "Unknown error"}`);
+      setFiles(prev => prev.map(f => f.status === 'Processing' ? { ...f, status: 'Idle' } : f));
     }
   };
 

@@ -1,5 +1,5 @@
 // @ts-ignore
-import { Mp3Encoder } from 'lamejs';
+import * as lamejs from 'lamejs';
 import { buildID3v2Tag, type AudioMetadata } from './id3Encoder';
 
 export async function encodeMP3(audioBuffer: AudioBuffer, metadata?: AudioMetadata): Promise<Blob> {
@@ -8,7 +8,7 @@ export async function encodeMP3(audioBuffer: AudioBuffer, metadata?: AudioMetada
   const numChannels = audioBuffer.numberOfChannels;
   
   // Initialize lamejs encoder
-  const encoder = new Mp3Encoder(numChannels, sampleRate, 320);
+  const encoder = new lamejs.Mp3Encoder(numChannels, sampleRate, 320);
   
   const mp3Data: Int8Array[] = [];
 
@@ -31,7 +31,12 @@ export async function encodeMP3(audioBuffer: AudioBuffer, metadata?: AudioMetada
       rightInt16[j] = r < 0 ? r * 0x8000 : r * 0x7FFF;
     }
 
-    const mp3buf = encoder.encodeBuffer(leftInt16, rightInt16);
+    let mp3buf;
+    if (numChannels === 1) {
+      mp3buf = encoder.encodeBuffer(leftInt16);
+    } else {
+      mp3buf = encoder.encodeBuffer(leftInt16, rightInt16);
+    }
     if (mp3buf.length > 0) {
       mp3Data.push(mp3buf);
     }
