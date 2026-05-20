@@ -77,7 +77,7 @@ async function encodeWithWebCodecs(
 ): Promise<Blob> {
   const OUTPUT_WIDTH = 1920;
   const OUTPUT_HEIGHT = 1080;
-  const FPS = 1; // 1fps = static image, 25x faster to encode
+  const FPS = 30;             // YouTube standard frame rate
   const sampleRate = audioBuffer.sampleRate;
   const numChannels = Math.min(audioBuffer.numberOfChannels, 2);
   const duration = audioBuffer.duration;
@@ -113,7 +113,7 @@ async function encodeWithWebCodecs(
     codec: 'avc1.4d002a',        // H.264 Main Profile 4.2
     width: OUTPUT_WIDTH,
     height: OUTPUT_HEIGHT,
-    bitrate: 2_000_000,
+    bitrate: 8_000_000,          // 8 Mbps — YouTube recommended for 1080p
     framerate: FPS,
     hardwareAcceleration: 'prefer-hardware',
     avc: { format: 'avc' },
@@ -128,10 +128,13 @@ async function encodeWithWebCodecs(
     codec: 'mp4a.40.2',          // AAC-LC
     numberOfChannels: numChannels,
     sampleRate,
-    bitrate: 192_000,
+    bitrate: 320_000,            // 320 kbps — CD quality audio
   });
 
-  // ── Encode video frames ──
+  // ── Encode video frames at 30fps ──
+  // H.264 uses inter-frame prediction: after the first keyframe,
+  // P-frames store only pixel *differences*. Since the image never changes,
+  // P-frames are near-empty, so 30fps is almost as fast as 1fps to encode.
   const frameDurationUs = Math.round(1_000_000 / FPS);
   for (let i = 0; i < totalVideoFrames; i++) {
     const frame = new VideoFrame(canvas, {
@@ -202,12 +205,13 @@ async function encodeWithFFmpeg(
   const stopTimer = startProgressTimer(duration, onProgress);
   try {
     await ff.exec([
-      '-loop', '1', '-framerate', '1', '-i', imgName,
+      '-loop', '1', '-framerate', '30', '-i', imgName,
       '-i', 'audio.wav',
       '-t', String(duration),
       '-threads', '0',
-      '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage', '-crf', '23',
-      '-c:a', 'aac', '-b:a', '192k',
+      '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage',
+      '-b:v', '8000k',           // 8 Mbps video
+      '-c:a', 'aac', '-b:a', '320k',  // 320 kbps audio
       '-pix_fmt', 'yuv420p',
       '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1',
       '-movflags', '+faststart',
@@ -287,12 +291,13 @@ export async function exportAlbumVideo(
   const stopTimer = startProgressTimer(totalDuration, onProgress);
   try {
     await ff.exec([
-      '-loop', '1', '-framerate', '1', '-i', imgName,
+      '-loop', '1', '-framerate', '30', '-i', imgName,
       '-f', 'concat', '-safe', '0', '-i', 'concat.txt',
       '-t', String(totalDuration),
       '-threads', '0',
-      '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage', '-crf', '23',
-      '-c:a', 'aac', '-b:a', '192k',
+      '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage',
+      '-b:v', '8000k',
+      '-c:a', 'aac', '-b:a', '320k',
       '-pix_fmt', 'yuv420p',
       '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1',
       '-movflags', '+faststart',
