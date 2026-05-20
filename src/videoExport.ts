@@ -104,10 +104,13 @@ async function encodeWithWebCodecs(
     fastStart: 'in-memory',
   });
 
+  let videoError: Error | null = null;
+  let audioError: Error | null = null;
+
   // Video Encoder
   const videoEncoder = new VideoEncoder({
     output: (chunk, meta) => muxer.addVideoChunk(chunk, meta!),
-    error: (e) => { throw e; },
+    error: (e) => { videoError = e; },
   });
   videoEncoder.configure({
     codec: 'avc1.4d002a',        // H.264 Main Profile 4.2
@@ -122,7 +125,7 @@ async function encodeWithWebCodecs(
   // Audio Encoder
   const audioEncoder = new AudioEncoder({
     output: (chunk, meta) => muxer.addAudioChunk(chunk, meta!),
-    error: (e) => { throw e; },
+    error: (e) => { audioError = e; },
   });
   audioEncoder.configure({
     codec: 'mp4a.40.2',          // AAC-LC
@@ -131,22 +134,37 @@ async function encodeWithWebCodecs(
     bitrate: 320_000,            // 320 kbps — CD quality audio
   });
 
+  // Backpressure: wait until encoder queue drains below limit
+  const waitForDrain = async (encoder: VideoEncoder | AudioEncoder, limit = 10) => {
+    while (encoder.encodeQueueSize > limit) {
+      if (videoError) throw videoError;
+      if (audioError) throw audioError;
+      await new Promise(r => setTimeout(r, 5));
+    }
+  };
+
   // ── Encode video frames at 30fps ──
   // H.264 uses inter-frame prediction: after the first keyframe,
   // P-frames store only pixel *differences*. Since the image never changes,
   // P-frames are near-empty, so 30fps is almost as fast as 1fps to encode.
   const frameDurationUs = Math.round(1_000_000 / FPS);
   for (let i = 0; i < totalVideoFrames; i++) {
+    // Backpressure: don't flood the encoder queue
+    await waitForDrain(videoEncoder);
+    if (videoError) throw videoError;
+
     const frame = new VideoFrame(canvas, {
       timestamp: i * frameDurationUs,
       duration: frameDurationUs,
     });
-    videoEncoder.encode(frame, { keyFrame: i % 60 === 0 });
+    videoEncoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 }); // keyframe every 2s
     frame.close();
     onProgress(Math.round((i / totalVideoFrames) * 50)); // 0–50%
-    // Yield to UI thread every 10 frames
-    if (i % 10 === 0) await new Promise(r => setTimeout(r, 0));
+    if (i % 30 === 0) await new Promise(r => setTimeout(r, 0)); // yield to UI
   }
+
+  await videoEncoder.flush();
+  if (videoError) throw videoError;
 
   // ── Encode audio chunks ──
   const channelData: Float32Array[] = [];
@@ -157,6 +175,11 @@ async function encodeWithWebCodecs(
   while (processed < totalSamples) {
     const chunkSize = Math.min(AUDIO_CHUNK_FRAMES, totalSamples - processed);
     const timestamp = Math.round((processed / sampleRate) * 1_000_000);
+
+    // Backpressure: drain audio encoder queue
+    await waitForDrain(audioEncoder);
+    if (audioError) throw audioError;
+    if (audioEncoder.state === 'closed') throw new Error('Audio encoder closed unexpectedly. Try a shorter track or reload.');
 
     // Planar float32: [ch0_samples..., ch1_samples...]
     const planar = new Float32Array(numChannels * chunkSize);
