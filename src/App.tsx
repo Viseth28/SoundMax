@@ -55,9 +55,7 @@ export default function App() {
     setVideoProgress(0);
 
     try {
-      const ffmpeg = await initFFmpeg(undefined, ({ progress }) => {
-        setVideoProgress(Math.round(progress * 100));
-      });
+      const ffmpeg = await initFFmpeg();
 
       if (videoConfig.mode === 'individual') {
         for (const file of files) {
@@ -65,7 +63,6 @@ export default function App() {
           
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Processing' } : f));
           
-          // Render audio temporarily
           const offlineCtx = new OfflineAudioContext(
             2,
             Math.ceil(file.buffer.duration * exportConfig.sampleRate),
@@ -78,9 +75,13 @@ export default function App() {
           offlineGraph.start();
           const renderedBuffer = await offlineCtx.startRendering();
           const audioBlob = encodeWAV(renderedBuffer, exportConfig.sampleRate, 16);
+          const audioDuration = renderedBuffer.duration;
           
           const outputName = `SOUNDMAX_Video_${file.name.replace(/\.[^/.]+$/, "")}.mp4`;
-          const videoBlob = await exportIndividualVideo(ffmpeg, videoConfig.imageFile, audioBlob, outputName);
+          const videoBlob = await exportIndividualVideo(
+            ffmpeg, videoConfig.imageFile, audioBlob, audioDuration, outputName,
+            (pct) => setVideoProgress(pct)
+          );
           
           const url = URL.createObjectURL(videoBlob);
           const a = document.createElement('a');
@@ -92,7 +93,7 @@ export default function App() {
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Completed' } : f));
         }
       } else {
-        const audioBlobs: {name: string, blob: Blob}[] = [];
+        const audioBlobs: {name: string, blob: Blob, duration: number}[] = [];
         for (const file of files) {
           if (!file.buffer) continue;
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Processing' } : f));
@@ -109,13 +110,17 @@ export default function App() {
           const renderedBuffer = await offlineCtx.startRendering();
           audioBlobs.push({
             name: file.name,
-            blob: encodeWAV(renderedBuffer, exportConfig.sampleRate, 16)
+            blob: encodeWAV(renderedBuffer, exportConfig.sampleRate, 16),
+            duration: renderedBuffer.duration
           });
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Completed' } : f));
         }
         
         const outputName = `SOUNDMAX_Full_Album_Video.mp4`;
-        const videoBlob = await exportAlbumVideo(ffmpeg, videoConfig.imageFile, audioBlobs, outputName);
+        const videoBlob = await exportAlbumVideo(
+          ffmpeg, videoConfig.imageFile, audioBlobs, outputName,
+          (pct) => setVideoProgress(pct)
+        );
         
         const url = URL.createObjectURL(videoBlob);
         const a = document.createElement('a');
