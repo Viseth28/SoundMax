@@ -10,7 +10,7 @@ export async function initFFmpeg(onLog?: (log: any) => void, onProgress?: (p: { 
   if (onLog) ffmpeg.on('log', onLog);
   if (onProgress) ffmpeg.on('progress', onProgress);
 
-  const baseURL = '/ffmpeg';
+  const baseURL = window.location.origin + '/ffmpeg';
   await ffmpeg.load({
     coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
     wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
