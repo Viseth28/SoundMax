@@ -2,22 +2,33 @@ import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
 let ffmpeg: FFmpeg | null = null;
+let loadPromise: Promise<FFmpeg> | null = null;
 
 export async function initFFmpeg(onLog?: (log: any) => void, onProgress?: (p: { progress: number, time: number }) => void) {
-  if (ffmpeg) return ffmpeg;
+  if (ffmpeg && ffmpeg.loaded) return ffmpeg;
+  if (loadPromise) return loadPromise;
+
   ffmpeg = new FFmpeg();
   
   if (onLog) ffmpeg.on('log', onLog);
   if (onProgress) ffmpeg.on('progress', onProgress);
 
   const baseURL = window.location.origin + '/ffmpeg';
-  await ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-    // Worker is only for MT (multi-threading) which requires core-mt. We are using standard core umd.
-  });
+  
+  loadPromise = (async () => {
+    try {
+      await ffmpeg!.load({
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      });
+      return ffmpeg!;
+    } catch (e) {
+      loadPromise = null;
+      throw e;
+    }
+  })();
 
-  return ffmpeg;
+  return loadPromise;
 }
 
 export async function exportIndividualVideo(
