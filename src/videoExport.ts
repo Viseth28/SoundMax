@@ -131,7 +131,8 @@ async function encodeWithWebCodecs(
     codec: 'mp4a.40.2',          // AAC-LC
     numberOfChannels: numChannels,
     sampleRate,
-    bitrate: 320_000,            // 320 kbps — CD quality audio
+    bitrate: 192_000,            // 192 kbps — max AAC bitrate supported by Web Codecs AudioEncoder
+                                  // (supported values: 96k, 128k, 160k, 192k)
   });
 
   // Backpressure: wait until encoder queue drains below limit
