@@ -47,8 +47,8 @@ function startProgressTimer(
   onProgress: (pct: number) => void
 ): () => void {
   const start = Date.now();
-  // Estimate encoding takes ~2x realtime as a safe upper bound
-  const estimatedMs = durationSec * 2000;
+  // Estimate: 1fps + ultrafast + all-cores = roughly 0.1-0.2x realtime
+  const estimatedMs = durationSec * 200;
   const interval = setInterval(() => {
     const elapsed = Date.now() - start;
     const pct = Math.min(95, Math.round((elapsed / estimatedMs) * 100));
@@ -77,16 +77,20 @@ export async function exportIndividualVideo(
   try {
     await ffmpegInst.exec([
       '-loop', '1',
+      '-framerate', '1',               // 1 FPS: static image never changes, 25x faster encode
       '-i', imgName,
       '-i', audioName,
-      '-t', String(audioDurationSec),   // Tell FFmpeg the exact duration
+      '-t', String(audioDurationSec),
+      '-threads', '0',                 // Use ALL CPU cores
       '-c:v', 'libx264',
-      '-preset', 'ultrafast',            // Use ultrafast preset to minimize CPU time
+      '-preset', 'ultrafast',          // Fastest possible x264 preset
       '-tune', 'stillimage',
+      '-crf', '23',                    // Good quality, YouTube re-encodes anyway
       '-c:a', 'aac',
       '-b:a', '192k',
       '-pix_fmt', 'yuv420p',
-      '-movflags', '+faststart',         // YouTube optimization
+      '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1',  // Normalize to 1080p
+      '-movflags', '+faststart',
       outputName
     ]);
   } finally {
@@ -130,17 +134,21 @@ export async function exportAlbumVideo(
   try {
     await ffmpegInst.exec([
       '-loop', '1',
+      '-framerate', '1',               // 1 FPS: static image never changes, 25x faster encode
       '-i', imgName,
       '-f', 'concat',
       '-safe', '0',
       '-i', 'concat.txt',
-      '-t', String(totalDuration),       // Tell FFmpeg the exact total duration
+      '-t', String(totalDuration),
+      '-threads', '0',                 // Use ALL CPU cores
       '-c:v', 'libx264',
       '-preset', 'ultrafast',
       '-tune', 'stillimage',
+      '-crf', '23',
       '-c:a', 'aac',
       '-b:a', '192k',
       '-pix_fmt', 'yuv420p',
+      '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1',
       '-movflags', '+faststart',
       outputName
     ]);
