@@ -184,7 +184,7 @@ export default function App() {
       setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Processing' } : f));
       
       const offlineCtx = new OfflineAudioContext(
-        file.buffer.numberOfChannels,
+        2, // Always render as Stereo (2 channels) for distributor compatibility (RouteNote etc)
         Math.ceil(file.buffer.duration * exportConfig.sampleRate),
         exportConfig.sampleRate
       );
@@ -220,7 +220,7 @@ export default function App() {
         blob = await encodeFLAC(renderedBuffer, bitDepth, metadata);
       } else {
         const bitDepth = exportConfig.format === 'WAV 24-bit' ? 24 : 16;
-        blob = encodeWAV(renderedBuffer, exportConfig.sampleRate, bitDepth, metadata);
+        blob = encodeWAV(renderedBuffer, exportConfig.sampleRate, bitDepth);
       }
       
       // Trigger download
