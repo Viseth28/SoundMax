@@ -10,6 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@audio/encode-flac": "^1.1.1",
+    "@mediabunny/flac-encoder": "^1.45.3",
     "lamejs": "^1.2.1",
     "lucide-react": "^1.16.0",
     "react": "^19.2.6",

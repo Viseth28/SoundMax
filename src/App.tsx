@@ -3,6 +3,7 @@ import { Upload, Play, Pause, Settings, X, Download, Sparkles } from 'lucide-rea
 import { AudioGraph, type AudioParameters, defaultParams, presets } from './audioEngine';
 import { encodeWAV } from './wavEncoder';
 import { encodeMP3 } from './mp3Encoder';
+import { encodeFLAC } from './flacEncoder';
 import { calculateAutoMaster } from './autoMaster';
 
 interface QueuedFile {
@@ -214,6 +215,9 @@ export default function App() {
       
       if (exportConfig.format === 'MP3 320kbps') {
         blob = await encodeMP3(renderedBuffer, metadata);
+      } else if (exportConfig.format.startsWith('FLAC')) {
+        const bitDepth = exportConfig.format === 'FLAC 24-bit' ? 24 : 16;
+        blob = await encodeFLAC(renderedBuffer, bitDepth, metadata);
       } else {
         const bitDepth = exportConfig.format === 'WAV 24-bit' ? 24 : 16;
         blob = encodeWAV(renderedBuffer, exportConfig.sampleRate, bitDepth, metadata);
@@ -223,7 +227,7 @@ export default function App() {
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      const ext = exportConfig.format === 'MP3 320kbps' ? 'mp3' : 'wav';
+      const ext = exportConfig.format === 'MP3 320kbps' ? 'mp3' : exportConfig.format.startsWith('FLAC') ? 'flac' : 'wav';
       a.download = `SOUNDMAX_${file.name.replace(/\.[^/.]+$/, "")}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
@@ -428,6 +432,8 @@ export default function App() {
                   >
                     <option>WAV 16-bit</option>
                     <option>WAV 24-bit</option>
+                    <option>FLAC 16-bit</option>
+                    <option>FLAC 24-bit</option>
                     <option>MP3 320kbps</option>
                   </select>
                   
