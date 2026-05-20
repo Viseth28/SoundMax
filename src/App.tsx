@@ -1,10 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Play, Pause, Settings, X, Download, Sparkles } from 'lucide-react';
+import { Upload, Play, Pause, Settings, X, Download, Sparkles, Video } from 'lucide-react';
 import { AudioGraph, type AudioParameters, defaultParams, presets } from './audioEngine';
 import { encodeWAV } from './wavEncoder';
 import { encodeMP3 } from './mp3Encoder';
 import { encodeFLAC } from './flacEncoder';
 import { calculateAutoMaster } from './autoMaster';
+import { initFFmpeg, exportIndividualVideo, exportAlbumVideo } from './videoExport';
 
 interface QueuedFile {
   id: string;
@@ -39,6 +40,100 @@ export default function App() {
     coverImageData: null as ArrayBuffer | null,
     coverMime: ''
   });
+
+  const [showVideoModal, setShowVideoModal] = useState(false);
+  const [videoConfig, setVideoConfig] = useState({
+    imageFile: null as File | null,
+    mode: 'individual' as 'individual' | 'album'
+  });
+  const [videoProgress, setVideoProgress] = useState(0);
+  const [isExportingVideo, setIsExportingVideo] = useState(false);
+
+  const handleVideoExport = async () => {
+    if (!videoConfig.imageFile || files.length === 0) return;
+    setIsExportingVideo(true);
+    setVideoProgress(0);
+
+    try {
+      const ffmpeg = await initFFmpeg(undefined, ({ progress }) => {
+        setVideoProgress(Math.round(progress * 100));
+      });
+
+      if (videoConfig.mode === 'individual') {
+        for (const file of files) {
+          if (!file.buffer) continue;
+          
+          setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Processing' } : f));
+          
+          // Render audio temporarily
+          const offlineCtx = new OfflineAudioContext(
+            2,
+            Math.ceil(file.buffer.duration * exportConfig.sampleRate),
+            exportConfig.sampleRate
+          );
+          const offlineGraph = new AudioGraph(offlineCtx);
+          offlineGraph.applyParameters(params);
+          if (exportConfig.sunoBypass) offlineGraph.applySunoBypass();
+          offlineGraph.connectSource(file.buffer);
+          offlineGraph.start();
+          const renderedBuffer = await offlineCtx.startRendering();
+          const audioBlob = encodeWAV(renderedBuffer, exportConfig.sampleRate, 16);
+          
+          const outputName = `SOUNDMAX_Video_${file.name.replace(/\.[^/.]+$/, "")}.mp4`;
+          const videoBlob = await exportIndividualVideo(ffmpeg, videoConfig.imageFile, audioBlob, outputName);
+          
+          const url = URL.createObjectURL(videoBlob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = outputName;
+          a.click();
+          URL.revokeObjectURL(url);
+          
+          setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Completed' } : f));
+        }
+      } else {
+        const audioBlobs: {name: string, blob: Blob}[] = [];
+        for (const file of files) {
+          if (!file.buffer) continue;
+          setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Processing' } : f));
+          const offlineCtx = new OfflineAudioContext(
+            2,
+            Math.ceil(file.buffer.duration * exportConfig.sampleRate),
+            exportConfig.sampleRate
+          );
+          const offlineGraph = new AudioGraph(offlineCtx);
+          offlineGraph.applyParameters(params);
+          if (exportConfig.sunoBypass) offlineGraph.applySunoBypass();
+          offlineGraph.connectSource(file.buffer);
+          offlineGraph.start();
+          const renderedBuffer = await offlineCtx.startRendering();
+          audioBlobs.push({
+            name: file.name,
+            blob: encodeWAV(renderedBuffer, exportConfig.sampleRate, 16)
+          });
+          setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Completed' } : f));
+        }
+        
+        const outputName = `SOUNDMAX_Full_Album_Video.mp4`;
+        const videoBlob = await exportAlbumVideo(ffmpeg, videoConfig.imageFile, audioBlobs, outputName);
+        
+        const url = URL.createObjectURL(videoBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = outputName;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
+    } catch (e) {
+      console.error(e);
+      alert("Video export failed: " + (e instanceof Error ? e.message : String(e)));
+    } finally {
+      setIsExportingVideo(false);
+      setVideoProgress(0);
+      setShowVideoModal(false);
+      setFiles(prev => prev.map(f => f.status === 'Processing' ? { ...f, status: 'Idle' } : f));
+    }
+  };
 
   const handleCoverUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -255,6 +350,9 @@ export default function App() {
           </h1>
         </div>
         <div className="flex items-center gap-4">
+          <button onClick={() => setShowVideoModal(true)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-sm font-semibold rounded transition-all flex items-center gap-2 text-zinc-200">
+            <Video size={16} /> Video Studio
+          </button>
           <button onClick={() => setShowExportModal(true)} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-sm font-semibold rounded transition-all shadow-[0_0_10px_rgba(245,158,11,0.4)] flex items-center gap-2">
             <Download size={16} /> Export Config
           </button>
@@ -529,6 +627,98 @@ export default function App() {
               </button>
               <button onClick={executeExport} disabled={files.length === 0} className="px-6 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:hover:bg-amber-600 text-white text-sm font-bold rounded shadow-[0_0_15px_rgba(245,158,11,0.4)] transition-all">
                 Start Export
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Video Studio Modal */}
+      {showVideoModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
+          <div className="bg-[#0a0a0a] border border-zinc-800 rounded-lg shadow-2xl w-full max-w-md overflow-hidden">
+            <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-900/50">
+              <h2 className="text-lg font-bold flex items-center gap-2">
+                <Video size={20} className="text-amber-500" />
+                SOUNDMAX Video Studio
+              </h2>
+              <button onClick={() => !isExportingVideo && setShowVideoModal(false)} className="text-zinc-500 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              <div className="text-sm text-zinc-400">
+                Transform your mastered audio into a YouTube-ready MP4 video. No external video editor required.
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-2">Cover Artwork (Required)</label>
+                <label className="cursor-pointer flex flex-col items-center justify-center border-2 border-dashed border-zinc-700 bg-zinc-950 rounded-lg p-6 hover:bg-zinc-900 hover:border-amber-500 transition-all">
+                  {videoConfig.imageFile ? (
+                    <div className="text-center">
+                      <div className="text-amber-500 mb-1"><Video size={24} className="mx-auto" /></div>
+                      <span className="text-sm text-zinc-200 block truncate max-w-[200px]">{videoConfig.imageFile.name}</span>
+                      <span className="text-xs text-zinc-500">Click to change</span>
+                    </div>
+                  ) : (
+                    <div className="text-center">
+                      <Upload size={24} className="text-zinc-500 mb-2 mx-auto" />
+                      <span className="text-sm text-zinc-300 block mb-1">Upload Image (16:9 or Square)</span>
+                      <span className="text-xs text-zinc-600">JPEG, PNG</span>
+                    </div>
+                  )}
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => {
+                    const f = e.target.files?.[0];
+                    if (f) setVideoConfig({...videoConfig, imageFile: f});
+                  }} />
+                </label>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-zinc-400 mb-2">Export Mode</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => setVideoConfig({...videoConfig, mode: 'individual'})}
+                    className={`p-3 rounded border text-sm transition-all ${videoConfig.mode === 'individual' ? 'bg-amber-600/20 border-amber-500 text-amber-500' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-600'}`}
+                  >
+                    <div className="font-bold mb-1">Individual Videos</div>
+                    <div className="text-[10px] opacity-80 leading-tight">1 MP4 file per track in the queue</div>
+                  </button>
+                  <button 
+                    onClick={() => setVideoConfig({...videoConfig, mode: 'album'})}
+                    className={`p-3 rounded border text-sm transition-all ${videoConfig.mode === 'album' ? 'bg-amber-600/20 border-amber-500 text-amber-500' : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-600'}`}
+                  >
+                    <div className="font-bold mb-1">Full Album Video</div>
+                    <div className="text-[10px] opacity-80 leading-tight">1 massive MP4 file with all tracks</div>
+                  </button>
+                </div>
+              </div>
+
+              {isExportingVideo && (
+                <div className="pt-2">
+                  <div className="flex justify-between text-xs text-amber-500 mb-1 font-medium">
+                    <span>Rendering Video (CPU Intensive)...</span>
+                    <span>{videoProgress}%</span>
+                  </div>
+                  <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden">
+                    <div className="bg-amber-500 h-full transition-all duration-300" style={{width: `${videoProgress}%`}}></div>
+                  </div>
+                </div>
+              )}
+            </div>
+            
+            <div className="px-6 py-4 bg-zinc-950 border-t border-zinc-800 flex justify-end gap-3">
+              <button disabled={isExportingVideo} onClick={() => setShowVideoModal(false)} className="px-4 py-2 text-sm font-medium text-zinc-300 hover:text-white transition-colors disabled:opacity-50">
+                Cancel
+              </button>
+              <button 
+                onClick={handleVideoExport} 
+                disabled={files.length === 0 || !videoConfig.imageFile || isExportingVideo} 
+                className="px-6 py-2 bg-amber-600 hover:bg-amber-500 disabled:opacity-50 disabled:hover:bg-amber-600 text-white text-sm font-bold rounded shadow-[0_0_15px_rgba(245,158,11,0.4)] transition-all flex items-center gap-2"
+              >
+                {isExportingVideo ? <Sparkles className="animate-spin" size={16} /> : <Video size={16} />}
+                {isExportingVideo ? 'Rendering...' : 'Render Video'}
               </button>
             </div>
           </div>
