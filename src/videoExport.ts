@@ -1,170 +1,312 @@
+import { Muxer, ArrayBufferTarget } from 'mp4-muxer';
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
-let ffmpeg: FFmpeg | null = null;
-let loadPromise: Promise<FFmpeg> | null = null;
+// ─────────────────────────────────────────
+// Capability Detection
+// ─────────────────────────────────────────
+export function isWebCodecsSupported(): boolean {
+  return (
+    typeof VideoEncoder !== 'undefined' &&
+    typeof AudioEncoder !== 'undefined' &&
+    typeof VideoFrame !== 'undefined' &&
+    typeof AudioData !== 'undefined'
+  );
+}
 
-export async function initFFmpeg() {
-  if (ffmpeg && ffmpeg.loaded) return ffmpeg;
-  if (loadPromise) return loadPromise;
+// ─────────────────────────────────────────
+// FFmpeg singleton (fallback only)
+// ─────────────────────────────────────────
+let ffmpegInst: FFmpeg | null = null;
+let ffmpegLoadPromise: Promise<FFmpeg> | null = null;
 
-  ffmpeg = new FFmpeg();
+async function getFFmpeg(): Promise<FFmpeg> {
+  if (ffmpegInst && ffmpegInst.loaded) return ffmpegInst;
+  if (ffmpegLoadPromise) return ffmpegLoadPromise;
 
+  ffmpegInst = new FFmpeg();
   const baseURL = window.location.origin + '/ffmpeg';
-  
-  loadPromise = (async () => {
+
+  ffmpegLoadPromise = (async () => {
     try {
-      await ffmpeg!.load({
+      await ffmpegInst!.load({
         coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
         wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
         workerURL: await toBlobURL(`${baseURL}/ffmpeg-core.worker.js`, 'text/javascript'),
       });
-      return ffmpeg!;
-    } catch (e) {
-      // Fallback: try single-threaded core without workerURL
+      return ffmpegInst!;
+    } catch {
       try {
-        ffmpeg = new FFmpeg();
-        await ffmpeg.load({
+        ffmpegInst = new FFmpeg();
+        await ffmpegInst.load({
           coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
           wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
         });
-        loadPromise = null;
-        return ffmpeg;
+        ffmpegLoadPromise = null;
+        return ffmpegInst;
       } catch (e2) {
-        loadPromise = null;
+        ffmpegLoadPromise = null;
         throw e2;
       }
     }
   })();
 
-  return loadPromise;
+  return ffmpegLoadPromise;
 }
 
-// Start an animated progress timer since ffmpeg cannot calculate progress 
-// when total duration is unknown (looped image input)
-function startProgressTimer(
-  durationSec: number,
-  onProgress: (pct: number) => void
-): () => void {
+// ─────────────────────────────────────────
+// Progress timer (for FFmpeg fallback)
+// ─────────────────────────────────────────
+function startProgressTimer(durationSec: number, onProgress: (pct: number) => void): () => void {
   const start = Date.now();
-  // Estimate: 1fps + ultrafast + all-cores = roughly 0.1-0.2x realtime
   const estimatedMs = durationSec * 200;
   const interval = setInterval(() => {
-    const elapsed = Date.now() - start;
-    const pct = Math.min(95, Math.round((elapsed / estimatedMs) * 100));
+    const pct = Math.min(95, Math.round(((Date.now() - start) / estimatedMs) * 100));
     onProgress(pct);
-  }, 500);
+  }, 300);
   return () => clearInterval(interval);
 }
 
-export async function exportIndividualVideo(
-  ffmpegInst: FFmpeg,
+// ─────────────────────────────────────────
+// Web Codecs Engine (GPU Hardware Encoder)
+// ─────────────────────────────────────────
+async function encodeWithWebCodecs(
   imageFile: File,
-  audioBlob: Blob,
-  audioDurationSec: number,
-  outputName: string,
+  audioBuffer: AudioBuffer,
   onProgress: (pct: number) => void
 ): Promise<Blob> {
+  const OUTPUT_WIDTH = 1920;
+  const OUTPUT_HEIGHT = 1080;
+  const FPS = 1; // 1fps = static image, 25x faster to encode
+  const sampleRate = audioBuffer.sampleRate;
+  const numChannels = Math.min(audioBuffer.numberOfChannels, 2);
+  const duration = audioBuffer.duration;
+  const totalVideoFrames = Math.ceil(duration * FPS);
+  const AUDIO_CHUNK_FRAMES = 8192;
+
+  // Draw image to offscreen canvas (centered, letterboxed)
+  const img = await createImageBitmap(imageFile);
+  const canvas = new OffscreenCanvas(OUTPUT_WIDTH, OUTPUT_HEIGHT);
+  const ctx = canvas.getContext('2d')!;
+  const scale = Math.min(OUTPUT_WIDTH / img.width, OUTPUT_HEIGHT / img.height);
+  const scaledW = Math.round(img.width * scale);
+  const scaledH = Math.round(img.height * scale);
+  ctx.fillStyle = '#000';
+  ctx.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
+  ctx.drawImage(img, Math.round((OUTPUT_WIDTH - scaledW) / 2), Math.round((OUTPUT_HEIGHT - scaledH) / 2), scaledW, scaledH);
+
+  // Setup muxer
+  const target = new ArrayBufferTarget();
+  const muxer = new Muxer({
+    target,
+    video: { codec: 'avc', width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT, frameRate: FPS },
+    audio: { codec: 'aac', numberOfChannels: numChannels, sampleRate },
+    fastStart: 'in-memory',
+  });
+
+  // Video Encoder
+  const videoEncoder = new VideoEncoder({
+    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta!),
+    error: (e) => { throw e; },
+  });
+  videoEncoder.configure({
+    codec: 'avc1.4d002a',        // H.264 Main Profile 4.2
+    width: OUTPUT_WIDTH,
+    height: OUTPUT_HEIGHT,
+    bitrate: 2_000_000,
+    framerate: FPS,
+    hardwareAcceleration: 'prefer-hardware',
+    avc: { format: 'avc' },
+  });
+
+  // Audio Encoder
+  const audioEncoder = new AudioEncoder({
+    output: (chunk, meta) => muxer.addAudioChunk(chunk, meta!),
+    error: (e) => { throw e; },
+  });
+  audioEncoder.configure({
+    codec: 'mp4a.40.2',          // AAC-LC
+    numberOfChannels: numChannels,
+    sampleRate,
+    bitrate: 192_000,
+  });
+
+  // ── Encode video frames ──
+  const frameDurationUs = Math.round(1_000_000 / FPS);
+  for (let i = 0; i < totalVideoFrames; i++) {
+    const frame = new VideoFrame(canvas, {
+      timestamp: i * frameDurationUs,
+      duration: frameDurationUs,
+    });
+    videoEncoder.encode(frame, { keyFrame: i % 60 === 0 });
+    frame.close();
+    onProgress(Math.round((i / totalVideoFrames) * 50)); // 0–50%
+    // Yield to UI thread every 10 frames
+    if (i % 10 === 0) await new Promise(r => setTimeout(r, 0));
+  }
+
+  // ── Encode audio chunks ──
+  const channelData: Float32Array[] = [];
+  for (let c = 0; c < numChannels; c++) channelData.push(audioBuffer.getChannelData(c));
+  const totalSamples = audioBuffer.length;
+  let processed = 0;
+
+  while (processed < totalSamples) {
+    const chunkSize = Math.min(AUDIO_CHUNK_FRAMES, totalSamples - processed);
+    const timestamp = Math.round((processed / sampleRate) * 1_000_000);
+
+    // Planar float32: [ch0_samples..., ch1_samples...]
+    const planar = new Float32Array(numChannels * chunkSize);
+    for (let c = 0; c < numChannels; c++) {
+      planar.set(channelData[c].subarray(processed, processed + chunkSize), c * chunkSize);
+    }
+
+    const audioData = new AudioData({
+      format: 'f32-planar',
+      sampleRate,
+      numberOfChannels: numChannels,
+      numberOfFrames: chunkSize,
+      timestamp,
+      data: planar,
+    });
+    audioEncoder.encode(audioData);
+    audioData.close();
+
+    processed += chunkSize;
+    onProgress(50 + Math.round((processed / totalSamples) * 45)); // 50–95%
+  }
+
+  await videoEncoder.flush();
+  await audioEncoder.flush();
+  muxer.finalize();
+
+  onProgress(100);
+  return new Blob([target.buffer], { type: 'video/mp4' });
+}
+
+// ─────────────────────────────────────────
+// FFmpeg fallback encoder
+// ─────────────────────────────────────────
+async function encodeWithFFmpeg(
+  imageFile: File,
+  audioBlob: Blob,
+  duration: number,
+  onProgress: (pct: number) => void
+): Promise<Blob> {
+  const ff = await getFFmpeg();
   const imgExt = imageFile.name.split('.').pop() || 'jpg';
   const imgName = `cover.${imgExt}`;
-  const audioName = `audio.wav`;
+  await ff.writeFile(imgName, await fetchFile(imageFile));
+  await ff.writeFile('audio.wav', await fetchFile(audioBlob));
 
-  await ffmpegInst.writeFile(imgName, await fetchFile(imageFile));
-  await ffmpegInst.writeFile(audioName, await fetchFile(audioBlob));
-
-  const stopTimer = startProgressTimer(audioDurationSec, onProgress);
-
+  const stopTimer = startProgressTimer(duration, onProgress);
   try {
-    await ffmpegInst.exec([
-      '-loop', '1',
-      '-framerate', '1',               // 1 FPS: static image never changes, 25x faster encode
-      '-i', imgName,
-      '-i', audioName,
-      '-t', String(audioDurationSec),
-      '-threads', '0',                 // Use ALL CPU cores
-      '-c:v', 'libx264',
-      '-preset', 'ultrafast',          // Fastest possible x264 preset
-      '-tune', 'stillimage',
-      '-crf', '23',                    // Good quality, YouTube re-encodes anyway
-      '-c:a', 'aac',
-      '-b:a', '192k',
+    await ff.exec([
+      '-loop', '1', '-framerate', '1', '-i', imgName,
+      '-i', 'audio.wav',
+      '-t', String(duration),
+      '-threads', '0',
+      '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage', '-crf', '23',
+      '-c:a', 'aac', '-b:a', '192k',
       '-pix_fmt', 'yuv420p',
-      '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1',  // Normalize to 1080p
+      '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1',
       '-movflags', '+faststart',
-      outputName
+      'output.mp4',
     ]);
   } finally {
     stopTimer();
   }
 
-  onProgress(99);
-  const data = await ffmpegInst.readFile(outputName);
-  
-  await ffmpegInst.deleteFile(imgName);
-  await ffmpegInst.deleteFile(audioName);
-  await ffmpegInst.deleteFile(outputName);
+  const data = await ff.readFile('output.mp4');
+  await ff.deleteFile(imgName);
+  await ff.deleteFile('audio.wav');
+  await ff.deleteFile('output.mp4');
 
   onProgress(100);
   return new Blob([data as any], { type: 'video/mp4' });
 }
 
-export async function exportAlbumVideo(
-  ffmpegInst: FFmpeg,
+// ─────────────────────────────────────────
+// Public API — Individual track video
+// ─────────────────────────────────────────
+export async function exportIndividualVideo(
   imageFile: File,
-  audioBlobs: { name: string, blob: Blob, duration: number }[],
-  outputName: string,
+  renderedBuffer: AudioBuffer,
+  audioBlob: Blob,
   onProgress: (pct: number) => void
 ): Promise<Blob> {
+  if (isWebCodecsSupported()) {
+    return encodeWithWebCodecs(imageFile, renderedBuffer, onProgress);
+  }
+  return encodeWithFFmpeg(imageFile, audioBlob, renderedBuffer.duration, onProgress);
+}
+
+// ─────────────────────────────────────────
+// Public API — Full album video
+// ─────────────────────────────────────────
+export async function exportAlbumVideo(
+  imageFile: File,
+  renderedBuffers: AudioBuffer[],
+  audioBlobs: Blob[],
+  onProgress: (pct: number) => void
+): Promise<Blob> {
+  if (isWebCodecsSupported()) {
+    // Merge all AudioBuffers into one
+    const sampleRate = renderedBuffers[0].sampleRate;
+    const numChannels = Math.min(renderedBuffers[0].numberOfChannels, 2);
+    const totalLength = renderedBuffers.reduce((sum, b) => sum + b.length, 0);
+    const mergedCtx = new OfflineAudioContext(numChannels, totalLength, sampleRate);
+    const mergedBuffer = mergedCtx.createBuffer(numChannels, totalLength, sampleRate);
+
+    let offset = 0;
+    for (const buf of renderedBuffers) {
+      for (let c = 0; c < numChannels; c++) {
+        mergedBuffer.getChannelData(c).set(buf.getChannelData(c), offset);
+      }
+      offset += buf.length;
+    }
+
+    return encodeWithWebCodecs(imageFile, mergedBuffer, onProgress);
+  }
+
+  // FFmpeg fallback: concatenate wav files
+  const ff = await getFFmpeg();
   const imgExt = imageFile.name.split('.').pop() || 'jpg';
   const imgName = `cover.${imgExt}`;
-  const totalDuration = audioBlobs.reduce((sum, a) => sum + a.duration, 0);
-
-  await ffmpegInst.writeFile(imgName, await fetchFile(imageFile));
+  await ff.writeFile(imgName, await fetchFile(imageFile));
 
   let concatContent = '';
+  const totalDuration = renderedBuffers.reduce((sum, b) => sum + b.duration, 0);
+
   for (let i = 0; i < audioBlobs.length; i++) {
-    const trackName = `track_${i}.wav`;
-    await ffmpegInst.writeFile(trackName, await fetchFile(audioBlobs[i].blob));
-    concatContent += `file '${trackName}'\n`;
+    await ff.writeFile(`track_${i}.wav`, await fetchFile(audioBlobs[i]));
+    concatContent += `file 'track_${i}.wav'\n`;
   }
-  await ffmpegInst.writeFile('concat.txt', concatContent);
+  await ff.writeFile('concat.txt', concatContent);
 
   const stopTimer = startProgressTimer(totalDuration, onProgress);
-
   try {
-    await ffmpegInst.exec([
-      '-loop', '1',
-      '-framerate', '1',               // 1 FPS: static image never changes, 25x faster encode
-      '-i', imgName,
-      '-f', 'concat',
-      '-safe', '0',
-      '-i', 'concat.txt',
+    await ff.exec([
+      '-loop', '1', '-framerate', '1', '-i', imgName,
+      '-f', 'concat', '-safe', '0', '-i', 'concat.txt',
       '-t', String(totalDuration),
-      '-threads', '0',                 // Use ALL CPU cores
-      '-c:v', 'libx264',
-      '-preset', 'ultrafast',
-      '-tune', 'stillimage',
-      '-crf', '23',
-      '-c:a', 'aac',
-      '-b:a', '192k',
+      '-threads', '0',
+      '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage', '-crf', '23',
+      '-c:a', 'aac', '-b:a', '192k',
       '-pix_fmt', 'yuv420p',
       '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1',
       '-movflags', '+faststart',
-      outputName
+      'album_output.mp4',
     ]);
   } finally {
     stopTimer();
   }
 
-  onProgress(99);
-  const data = await ffmpegInst.readFile(outputName);
-
-  await ffmpegInst.deleteFile(imgName);
-  await ffmpegInst.deleteFile('concat.txt');
-  for (let i = 0; i < audioBlobs.length; i++) {
-    await ffmpegInst.deleteFile(`track_${i}.wav`);
-  }
-  await ffmpegInst.deleteFile(outputName);
+  const data = await ff.readFile('album_output.mp4');
+  await ff.deleteFile(imgName);
+  await ff.deleteFile('concat.txt');
+  for (let i = 0; i < audioBlobs.length; i++) await ff.deleteFile(`track_${i}.wav`);
+  await ff.deleteFile('album_output.mp4');
 
   onProgress(100);
   return new Blob([data as any], { type: 'video/mp4' });

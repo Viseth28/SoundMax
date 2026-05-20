@@ -5,7 +5,7 @@ import { encodeWAV } from './wavEncoder';
 import { encodeMP3 } from './mp3Encoder';
 import { encodeFLAC } from './flacEncoder';
 import { calculateAutoMaster } from './autoMaster';
-import { initFFmpeg, exportIndividualVideo, exportAlbumVideo } from './videoExport';
+import { exportIndividualVideo, exportAlbumVideo, isWebCodecsSupported } from './videoExport';
 
 interface QueuedFile {
   id: string;
@@ -55,19 +55,13 @@ export default function App() {
     setVideoProgress(0);
 
     try {
-      const ffmpeg = await initFFmpeg();
-
       if (videoConfig.mode === 'individual') {
         for (const file of files) {
           if (!file.buffer) continue;
           
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Processing' } : f));
           
-          const offlineCtx = new OfflineAudioContext(
-            2,
-            Math.ceil(file.buffer.duration * exportConfig.sampleRate),
-            exportConfig.sampleRate
-          );
+          const offlineCtx = new OfflineAudioContext(2, Math.ceil(file.buffer.duration * exportConfig.sampleRate), exportConfig.sampleRate);
           const offlineGraph = new AudioGraph(offlineCtx);
           offlineGraph.applyParameters(params);
           if (exportConfig.sunoBypass) offlineGraph.applySunoBypass();
@@ -75,14 +69,13 @@ export default function App() {
           offlineGraph.start();
           const renderedBuffer = await offlineCtx.startRendering();
           const audioBlob = encodeWAV(renderedBuffer, exportConfig.sampleRate, 16);
-          const audioDuration = renderedBuffer.duration;
           
-          const outputName = `SOUNDMAX_Video_${file.name.replace(/\.[^/.]+$/, "")}.mp4`;
           const videoBlob = await exportIndividualVideo(
-            ffmpeg, videoConfig.imageFile, audioBlob, audioDuration, outputName,
+            videoConfig.imageFile, renderedBuffer, audioBlob,
             (pct) => setVideoProgress(pct)
           );
           
+          const outputName = `SOUNDMAX_Video_${file.name.replace(/\.[^/.]+$/, '')}.mp4`;
           const url = URL.createObjectURL(videoBlob);
           const a = document.createElement('a');
           a.href = url;
@@ -91,47 +84,42 @@ export default function App() {
           URL.revokeObjectURL(url);
           
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Completed' } : f));
+          setVideoProgress(0);
         }
       } else {
-        const audioBlobs: {name: string, blob: Blob, duration: number}[] = [];
+        const renderedBuffers: AudioBuffer[] = [];
+        const audioBlobs: Blob[] = [];
+
         for (const file of files) {
           if (!file.buffer) continue;
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Processing' } : f));
-          const offlineCtx = new OfflineAudioContext(
-            2,
-            Math.ceil(file.buffer.duration * exportConfig.sampleRate),
-            exportConfig.sampleRate
-          );
+          const offlineCtx = new OfflineAudioContext(2, Math.ceil(file.buffer.duration * exportConfig.sampleRate), exportConfig.sampleRate);
           const offlineGraph = new AudioGraph(offlineCtx);
           offlineGraph.applyParameters(params);
           if (exportConfig.sunoBypass) offlineGraph.applySunoBypass();
           offlineGraph.connectSource(file.buffer);
           offlineGraph.start();
           const renderedBuffer = await offlineCtx.startRendering();
-          audioBlobs.push({
-            name: file.name,
-            blob: encodeWAV(renderedBuffer, exportConfig.sampleRate, 16),
-            duration: renderedBuffer.duration
-          });
+          renderedBuffers.push(renderedBuffer);
+          audioBlobs.push(encodeWAV(renderedBuffer, exportConfig.sampleRate, 16));
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Completed' } : f));
         }
         
-        const outputName = `SOUNDMAX_Full_Album_Video.mp4`;
         const videoBlob = await exportAlbumVideo(
-          ffmpeg, videoConfig.imageFile, audioBlobs, outputName,
+          videoConfig.imageFile, renderedBuffers, audioBlobs,
           (pct) => setVideoProgress(pct)
         );
         
         const url = URL.createObjectURL(videoBlob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = outputName;
+        a.download = 'SOUNDMAX_Full_Album_Video.mp4';
         a.click();
         URL.revokeObjectURL(url);
       }
     } catch (e) {
       console.error(e);
-      alert("Video export failed: " + (e instanceof Error ? e.message : String(e)));
+      alert('Video export failed: ' + (e instanceof Error ? e.message : String(e)));
     } finally {
       setIsExportingVideo(false);
       setVideoProgress(0);
@@ -653,8 +641,13 @@ export default function App() {
             </div>
             
             <div className="p-6 space-y-6">
-              <div className="text-sm text-zinc-400">
-                Transform your mastered audio into a YouTube-ready MP4 video. No external video editor required.
+              <div className="flex items-center justify-between">
+                <div className="text-sm text-zinc-400">Transform your mastered audio into a YouTube-ready MP4. No video editor needed.</div>
+                {isWebCodecsSupported() ? (
+                  <span className="ml-3 shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">⚡ GPU</span>
+                ) : (
+                  <span className="ml-3 shrink-0 px-2 py-0.5 rounded text-[10px] font-bold bg-zinc-700/50 text-zinc-400 border border-zinc-600/30">CPU</span>
+                )}
               </div>
 
               <div>
