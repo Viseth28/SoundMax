@@ -121,144 +121,173 @@ async function encodeWithWebCodecs(
 
   // Draw image to offscreen canvas (centered, letterboxed)
   const img = await createImageBitmap(imageFile);
-  const canvas = new OffscreenCanvas(OUTPUT_WIDTH, OUTPUT_HEIGHT);
-  const ctx = canvas.getContext('2d')!;
-  const scale = Math.min(OUTPUT_WIDTH / img.width, OUTPUT_HEIGHT / img.height);
-  const scaledW = Math.round(img.width * scale);
-  const scaledH = Math.round(img.height * scale);
-  ctx.fillStyle = '#000';
-  ctx.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
-  ctx.drawImage(img, Math.round((OUTPUT_WIDTH - scaledW) / 2), Math.round((OUTPUT_HEIGHT - scaledH) / 2), scaledW, scaledH);
+  let preRenderedImage: ImageBitmap | null = null;
+  let videoEncoder: VideoEncoder | null = null;
+  let audioEncoder: AudioEncoder | null = null;
 
-  // Capture the final canvas frame once into GPU-friendly memory
-  const preRenderedImage = await createImageBitmap(canvas);
+  try {
+    const canvas = new OffscreenCanvas(OUTPUT_WIDTH, OUTPUT_HEIGHT);
+    const ctx = canvas.getContext('2d')!;
+    const scale = Math.min(OUTPUT_WIDTH / img.width, OUTPUT_HEIGHT / img.height);
+    const scaledW = Math.round(img.width * scale);
+    const scaledH = Math.round(img.height * scale);
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
+    ctx.drawImage(img, Math.round((OUTPUT_WIDTH - scaledW) / 2), Math.round((OUTPUT_HEIGHT - scaledH) / 2), scaledW, scaledH);
 
-  // Setup muxer
-  const target = new ArrayBufferTarget();
-  const muxer = new Muxer({
-    target,
-    video: { codec: 'avc', width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT, frameRate: FPS },
-    audio: { codec: 'aac', numberOfChannels: numChannels, sampleRate },
-    fastStart: 'in-memory',
-  });
+    // Capture the final canvas frame once into GPU-friendly memory
+    preRenderedImage = await createImageBitmap(canvas);
 
-  let videoError: Error | null = null;
-  let audioError: Error | null = null;
-
-  // Video Encoder
-  const videoEncoder = new VideoEncoder({
-    output: (chunk, meta) => muxer.addVideoChunk(chunk, meta!),
-    error: (e) => { videoError = e; },
-  });
-
-  // Dynamically select AVC Profile/Level based on resolution/bitrate demands
-  const codec = (OUTPUT_WIDTH > 1920) ? 'avc1.640033' : 'avc1.4d4028';
-
-  videoEncoder.configure({
-    codec,        
-    width: OUTPUT_WIDTH,
-    height: OUTPUT_HEIGHT,
-    bitrate: videoBitrate,          
-    framerate: FPS === 1 ? 24 : FPS, // Fallback high frame rate hint to prevent 1 FPS validation crash on GPU drivers
-    hardwareAcceleration: 'no-preference', 
-    avc: { format: 'avc' },
-  });
-
-  // Audio Encoder
-  const audioEncoder = new AudioEncoder({
-    output: (chunk, meta) => muxer.addAudioChunk(chunk, meta!),
-    error: (e) => { audioError = e; },
-  });
-  audioEncoder.configure({
-    codec: 'mp4a.40.2',          // AAC-LC
-    numberOfChannels: numChannels,
-    sampleRate,
-    bitrate: options.audioBitrate,
-  });
-
-  // Yield to allow async initialization errors to propagate
-  await new Promise(resolve => setTimeout(resolve, 100));
-  if (videoError) throw videoError;
-  if (audioError) throw audioError;
-
-  // Backpressure queue
-  const waitForDrain = async (encoder: VideoEncoder | AudioEncoder, limit = 120) => {
-    if (encoder.encodeQueueSize > limit) {
-      while (encoder.encodeQueueSize > limit) {
-        if (videoError) throw videoError;
-        if (audioError) throw audioError;
-        await new Promise(r => setTimeout(r, 1)); 
-      }
-    }
-  };
-
-  // ── Encode video frames ──
-  const frameDurationUs = Math.round(1_000_000 / FPS);
-  for (let i = 0; i < totalVideoFrames; i++) {
-    await waitForDrain(videoEncoder);
-    if (videoError) throw videoError;
-
-    const frame = new VideoFrame(preRenderedImage, {
-      timestamp: i * frameDurationUs,
-      duration: frameDurationUs,
+    // Setup muxer
+    const target = new ArrayBufferTarget();
+    const muxer = new Muxer({
+      target,
+      video: { codec: 'avc', width: OUTPUT_WIDTH, height: OUTPUT_HEIGHT, frameRate: FPS },
+      audio: { codec: 'aac', numberOfChannels: numChannels, sampleRate },
+      fastStart: 'in-memory',
     });
-    videoEncoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 });
-    frame.close();
-    
-    // Throttle UI updates
-    onProgress(Math.round((i / totalVideoFrames) * 50)); // 0–50%
-  }
 
-  await videoEncoder.flush();
-  if (videoError) throw videoError;
+    let videoError: Error | null = null;
+    let audioError: Error | null = null;
 
-  // ── Encode audio chunks ──
-  const exportAudioBuffer = processedAudioBuffer;
-  const channelData: Float32Array[] = [];
-  for (let c = 0; c < numChannels; c++) channelData.push(exportAudioBuffer.getChannelData(c));
-  const totalSamples = exportAudioBuffer.length;
-  let processed = 0;
+    // Video Encoder
+    videoEncoder = new VideoEncoder({
+      output: (chunk, meta) => muxer.addVideoChunk(chunk, meta!),
+      error: (e) => { videoError = e; },
+    });
 
-  while (processed < totalSamples) {
-    const chunkSize = Math.min(AUDIO_CHUNK_FRAMES, totalSamples - processed);
-    const timestamp = Math.round((processed / sampleRate) * 1_000_000);
+    // Dynamically select AVC Profile/Level based on resolution/bitrate demands
+    const codec = (OUTPUT_WIDTH > 1920) ? 'avc1.640033' : 'avc1.4d4028';
 
-    await waitForDrain(audioEncoder);
+    videoEncoder.configure({
+      codec,        
+      width: OUTPUT_WIDTH,
+      height: OUTPUT_HEIGHT,
+      bitrate: videoBitrate,          
+      framerate: FPS === 1 ? 24 : FPS, // Fallback high frame rate hint to prevent 1 FPS validation crash on GPU drivers
+      hardwareAcceleration: 'no-preference', 
+      avc: { format: 'avc' },
+    });
+
+    // Audio Encoder
+    audioEncoder = new AudioEncoder({
+      output: (chunk, meta) => muxer.addAudioChunk(chunk, meta!),
+      error: (e) => { audioError = e; },
+    });
+    audioEncoder.configure({
+      codec: 'mp4a.40.2',          // AAC-LC
+      numberOfChannels: numChannels,
+      sampleRate,
+      bitrate: options.audioBitrate,
+    });
+
+    // Yield to allow async initialization errors to propagate
+    await new Promise(resolve => setTimeout(resolve, 100));
     if (videoError) throw videoError;
     if (audioError) throw audioError;
-    if (audioEncoder.state === 'closed') throw new Error('Audio encoder closed unexpectedly.');
 
-    const planar = new Float32Array(numChannels * chunkSize);
-    for (let c = 0; c < numChannels; c++) {
-      planar.set(channelData[c].subarray(processed, processed + chunkSize), c * chunkSize);
+    // Backpressure queue
+    const waitForDrain = async (encoder: VideoEncoder | AudioEncoder, limit = 120) => {
+      if (encoder.encodeQueueSize > limit) {
+        while (encoder.encodeQueueSize > limit) {
+          if (videoError) throw videoError;
+          if (audioError) throw audioError;
+          await new Promise(r => setTimeout(r, 1)); 
+        }
+      }
+    };
+
+    // ── Encode video frames ──
+    const frameDurationUs = Math.round(1_000_000 / FPS);
+    for (let i = 0; i < totalVideoFrames; i++) {
+      await waitForDrain(videoEncoder);
+      if (videoError) throw videoError;
+
+      const frame = new VideoFrame(preRenderedImage, {
+        timestamp: i * frameDurationUs,
+        duration: frameDurationUs,
+      });
+      videoEncoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 });
+      frame.close();
+      
+      // Throttle UI updates
+      onProgress(Math.round((i / totalVideoFrames) * 50)); // 0–50%
     }
 
-    const audioData = new AudioData({
-      format: 'f32-planar',
-      sampleRate,
-      numberOfChannels: numChannels,
-      numberOfFrames: chunkSize,
-      timestamp,
-      data: planar,
-    });
-    audioEncoder.encode(audioData);
-    audioData.close();
+    await videoEncoder.flush();
+    if (videoError) throw videoError;
 
-    processed += chunkSize;
-    
-    if (Math.round(processed / AUDIO_CHUNK_FRAMES) % 10 === 0) {
-      onProgress(50 + Math.round((processed / totalSamples) * 45)); // 50–95%
+    // ── Encode audio chunks ──
+    const exportAudioBuffer = processedAudioBuffer;
+    const channelData: Float32Array[] = [];
+    for (let c = 0; c < numChannels; c++) channelData.push(exportAudioBuffer.getChannelData(c));
+    const totalSamples = exportAudioBuffer.length;
+    let processed = 0;
+
+    while (processed < totalSamples) {
+      const chunkSize = Math.min(AUDIO_CHUNK_FRAMES, totalSamples - processed);
+      const timestamp = Math.round((processed / sampleRate) * 1_000_000);
+
+      await waitForDrain(audioEncoder);
+      if (videoError) throw videoError;
+      if (audioError) throw audioError;
+      if (audioEncoder.state === 'closed') throw new Error('Audio encoder closed unexpectedly.');
+
+      const planar = new Float32Array(numChannels * chunkSize);
+      for (let c = 0; c < numChannels; c++) {
+        planar.set(channelData[c].subarray(processed, processed + chunkSize), c * chunkSize);
+      }
+
+      const audioData = new AudioData({
+        format: 'f32-planar',
+        sampleRate,
+        numberOfChannels: numChannels,
+        numberOfFrames: chunkSize,
+        timestamp,
+        data: planar,
+      });
+      audioEncoder.encode(audioData);
+      audioData.close();
+
+      processed += chunkSize;
+      
+      if (Math.round(processed / AUDIO_CHUNK_FRAMES) % 10 === 0) {
+        onProgress(50 + Math.round((processed / totalSamples) * 45)); // 50–95%
+      }
+    }
+
+    await audioEncoder.flush();
+    if (videoError) throw videoError;
+    if (audioError) throw audioError;
+
+    muxer.finalize();
+
+    onProgress(100);
+    return new Blob([target.buffer], { type: 'video/mp4' });
+  } finally {
+    img.close();
+    if (preRenderedImage) {
+      preRenderedImage.close();
+    }
+    if (videoEncoder) {
+      try {
+        if (videoEncoder.state !== 'closed') {
+          videoEncoder.close();
+        }
+      } catch (err) {
+        console.warn('Failed to close videoEncoder:', err);
+      }
+    }
+    if (audioEncoder) {
+      try {
+        if (audioEncoder.state !== 'closed') {
+          audioEncoder.close();
+        }
+      } catch (err) {
+        console.warn('Failed to close audioEncoder:', err);
+      }
     }
   }
-
-  await videoEncoder.flush();
-  await audioEncoder.flush();
-  muxer.finalize();
-
-  preRenderedImage.close();
-
-  onProgress(100);
-  return new Blob([target.buffer], { type: 'video/mp4' });
 }
 
 // ─────────────────────────────────────────
