@@ -52,6 +52,7 @@ export default function App() {
   });
   const [videoProgress, setVideoProgress] = useState(0);
   const [isExportingVideo, setIsExportingVideo] = useState(false);
+  const [videoExportStatus, setVideoExportStatus] = useState('');
 
   // Playback states
   const [isPlaying, setIsPlaying] = useState(false);
@@ -66,6 +67,7 @@ export default function App() {
     if (!videoConfig.imageFile || files.length === 0) return;
     setIsExportingVideo(true);
     setVideoProgress(0);
+    setVideoExportStatus('Starting render process...');
 
     try {
       if (videoConfig.mode === 'individual') {
@@ -74,6 +76,7 @@ export default function App() {
           
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Processing' } : f));
           
+          setVideoExportStatus('Mastering & rendering audio track...');
           const offlineCtx = new OfflineAudioContext(2, Math.ceil(file.buffer.duration * exportConfig.sampleRate), exportConfig.sampleRate);
           const offlineGraph = new AudioGraph(offlineCtx);
           offlineGraph.applyParameters(params);
@@ -91,9 +94,13 @@ export default function App() {
               resolution: videoConfig.resolution,
               audioBitrate: videoConfig.audioBitrate
             },
-            (pct) => setVideoProgress(pct)
+            (pct, status) => {
+              setVideoProgress(pct);
+              if (status) setVideoExportStatus(status);
+            }
           );
           
+          setVideoExportStatus('Downloading MP4 video...');
           const outputName = `SOUNDMAX_Video_${file.name.replace(/\.[^/.]+$/, '')}.mp4`;
           const url = URL.createObjectURL(videoBlob);
           const a = document.createElement('a');
@@ -112,6 +119,7 @@ export default function App() {
         for (const file of files) {
           if (!file.buffer) continue;
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Processing' } : f));
+          setVideoExportStatus(`Mastering & rendering album track: ${file.name}...`);
           const offlineCtx = new OfflineAudioContext(2, Math.ceil(file.buffer.duration * exportConfig.sampleRate), exportConfig.sampleRate);
           const offlineGraph = new AudioGraph(offlineCtx);
           offlineGraph.applyParameters(params);
@@ -132,9 +140,13 @@ export default function App() {
             resolution: videoConfig.resolution,
             audioBitrate: videoConfig.audioBitrate
           },
-          (pct) => setVideoProgress(pct)
+          (pct, status) => {
+            setVideoProgress(pct);
+            if (status) setVideoExportStatus(status);
+          }
         );
         
+        setVideoExportStatus('Downloading full album MP4 video...');
         const url = URL.createObjectURL(videoBlob);
         const a = document.createElement('a');
         a.href = url;
@@ -148,6 +160,7 @@ export default function App() {
     } finally {
       setIsExportingVideo(false);
       setVideoProgress(0);
+      setVideoExportStatus('');
       setShowVideoModal(false);
       setFiles(prev => prev.map(f => f.status === 'Processing' ? { ...f, status: 'Idle' } : f));
     }
@@ -980,7 +993,7 @@ export default function App() {
               {isExportingVideo && (
                 <div className="pt-2">
                   <div className="flex justify-between text-xs text-amber-500 mb-1 font-medium">
-                    <span>Rendering Video (CPU Intensive)...</span>
+                    <span>{videoExportStatus || 'Rendering Video...'}</span>
                     <span>{videoProgress}%</span>
                   </div>
                   <div className="w-full bg-zinc-900 rounded-full h-2 overflow-hidden">

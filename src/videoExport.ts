@@ -64,12 +64,12 @@ async function getFFmpeg(): Promise<FFmpeg> {
 // ─────────────────────────────────────────
 // Progress timer (for FFmpeg fallback)
 // ─────────────────────────────────────────
-function startProgressTimer(durationSec: number, onProgress: (pct: number) => void): () => void {
+function startProgressTimer(durationSec: number, onProgress: (pct: number, status?: string) => void): () => void {
   const start = Date.now();
   const estimatedMs = durationSec * 200;
   const interval = setInterval(() => {
     const pct = Math.min(95, Math.round(((Date.now() - start) / estimatedMs) * 100));
-    onProgress(pct);
+    onProgress(pct, "CPU Fallback Rendering (Processing, can take a few minutes)...");
   }, 300);
   return () => clearInterval(interval);
 }
@@ -81,7 +81,7 @@ async function encodeWithWebCodecs(
   imageFile: File,
   audioBuffer: AudioBuffer,
   options: VideoExportOptions,
-  onProgress: (pct: number) => void
+  onProgress: (pct: number, status?: string) => void
 ): Promise<Blob> {
   const resolutionMap = {
     '720p': { w: 1280, h: 720 },
@@ -126,6 +126,7 @@ async function encodeWithWebCodecs(
   let audioEncoder: AudioEncoder | null = null;
 
   try {
+    onProgress(0, "GPU-Accelerated Rendering (Initializing encoders)...");
     const canvas = new OffscreenCanvas(OUTPUT_WIDTH, OUTPUT_HEIGHT);
     const ctx = canvas.getContext('2d')!;
     const scale = Math.min(OUTPUT_WIDTH / img.width, OUTPUT_HEIGHT / img.height);
@@ -153,33 +154,129 @@ async function encodeWithWebCodecs(
     // Video Encoder
     videoEncoder = new VideoEncoder({
       output: (chunk, meta) => muxer.addVideoChunk(chunk, meta!),
-      error: (e) => { videoError = e; },
+      error: (e) => {
+        console.error("WebCodecs VideoEncoder async error:", e);
+        videoError = e;
+      },
     });
 
     // Dynamically select AVC Profile/Level based on resolution/bitrate demands
-    const codec = (OUTPUT_WIDTH > 1920) ? 'avc1.640033' : 'avc1.4d4028';
+    let codec = 'avc1.4d4028'; // Main Profile Level 4.0
+    if (OUTPUT_WIDTH > 1920) {
+      codec = 'avc1.640033'; // High Profile Level 5.1
+    }
 
-    videoEncoder.configure({
-      codec,        
-      width: OUTPUT_WIDTH,
-      height: OUTPUT_HEIGHT,
-      bitrate: videoBitrate,          
-      framerate: FPS === 1 ? 24 : FPS, // Fallback high frame rate hint to prevent 1 FPS validation crash on GPU drivers
-      hardwareAcceleration: 'no-preference', 
-      avc: { format: 'avc' },
-    });
+    const configsToTry = [
+      // 1. Preferred profile with hardware/no-preference
+      {
+        codec,
+        width: OUTPUT_WIDTH,
+        height: OUTPUT_HEIGHT,
+        bitrate: videoBitrate,
+        framerate: FPS === 1 ? 24 : FPS,
+        hardwareAcceleration: 'no-preference' as const,
+        avc: { format: 'avc' as const }
+      },
+      // 2. Preferred profile with software fallback (native and super fast!)
+      {
+        codec,
+        width: OUTPUT_WIDTH,
+        height: OUTPUT_HEIGHT,
+        bitrate: videoBitrate,
+        framerate: FPS === 1 ? 24 : FPS,
+        hardwareAcceleration: 'prefer-software' as const,
+        avc: { format: 'avc' as const }
+      },
+      // 3. Main profile Level 3.1 (extremely compatible)
+      {
+        codec: 'avc1.4d401f',
+        width: OUTPUT_WIDTH,
+        height: OUTPUT_HEIGHT,
+        bitrate: Math.min(videoBitrate, 4_000_000),
+        framerate: FPS === 1 ? 24 : FPS,
+        hardwareAcceleration: 'no-preference' as const,
+        avc: { format: 'avc' as const }
+      },
+      // 4. Baseline profile Level 3.1
+      {
+        codec: 'avc1.42e01f',
+        width: OUTPUT_WIDTH,
+        height: OUTPUT_HEIGHT,
+        bitrate: Math.min(videoBitrate, 4_000_000),
+        framerate: FPS === 1 ? 24 : FPS,
+        hardwareAcceleration: 'no-preference' as const,
+        avc: { format: 'avc' as const }
+      },
+      // 5. Baseline profile Level 3.1 with software
+      {
+        codec: 'avc1.42e01f',
+        width: OUTPUT_WIDTH,
+        height: OUTPUT_HEIGHT,
+        bitrate: Math.min(videoBitrate, 4_000_000),
+        framerate: FPS === 1 ? 24 : FPS,
+        hardwareAcceleration: 'prefer-software' as const,
+        avc: { format: 'avc' as const }
+      }
+    ];
+
+    let selectedConfig = configsToTry[0];
+    let isSoftwareFallback = false;
+    if (typeof VideoEncoder.isConfigSupported === 'function') {
+      let foundSupported = false;
+      for (const config of configsToTry) {
+        try {
+          const support = await VideoEncoder.isConfigSupported(config);
+          if (support.supported) {
+            selectedConfig = config;
+            foundSupported = true;
+            isSoftwareFallback = config.hardwareAcceleration === 'prefer-software';
+            console.log("WebCodecs found supported config:", config);
+            break;
+          }
+        } catch (err) {
+          console.warn('isConfigSupported check failed for config:', config, err);
+        }
+      }
+      if (!foundSupported) {
+        console.warn("WebCodecs: No configuration reported as supported by isConfigSupported. Trying default baseline config.");
+        selectedConfig = configsToTry[configsToTry.length - 1];
+        isSoftwareFallback = true;
+      }
+    }
+
+    const accelLabel = isSoftwareFallback ? "Native CPU Software" : "GPU Hardware Accelerated";
+    onProgress(0, `GPU-Accelerated Rendering (Configured: ${accelLabel})...`);
+
+    videoEncoder.configure(selectedConfig);
 
     // Audio Encoder
     audioEncoder = new AudioEncoder({
       output: (chunk, meta) => muxer.addAudioChunk(chunk, meta!),
-      error: (e) => { audioError = e; },
+      error: (e) => {
+        console.error("WebCodecs AudioEncoder async error:", e);
+        audioError = e;
+      },
     });
-    audioEncoder.configure({
+
+    const audioConfig = {
       codec: 'mp4a.40.2',          // AAC-LC
       numberOfChannels: numChannels,
       sampleRate,
       bitrate: options.audioBitrate,
-    });
+    };
+
+    if (typeof AudioEncoder.isConfigSupported === 'function') {
+      try {
+        const support = await AudioEncoder.isConfigSupported(audioConfig);
+        if (!support.supported) {
+          console.warn("AudioEncoder: mp4a.40.2 configuration not directly supported.");
+        }
+      } catch (err) {
+        console.warn("AudioEncoder: isConfigSupported check failed:", err);
+      }
+    }
+
+    audioEncoder.configure(audioConfig);
 
     // Yield to allow async initialization errors to propagate
     await new Promise(resolve => setTimeout(resolve, 100));
@@ -211,9 +308,11 @@ async function encodeWithWebCodecs(
       frame.close();
       
       // Throttle UI updates
-      onProgress(Math.round((i / totalVideoFrames) * 50)); // 0–50%
+      onProgress(Math.round((i / totalVideoFrames) * 50), `GPU-Accelerated Rendering (Encoding Frames: ${i + 1}/${totalVideoFrames})...`); // 0–50%
     }
 
+    if (videoError) throw videoError;
+    onProgress(50, "GPU-Accelerated Rendering (Processing Video)...");
     await videoEncoder.flush();
     if (videoError) throw videoError;
 
@@ -252,17 +351,20 @@ async function encodeWithWebCodecs(
       processed += chunkSize;
       
       if (Math.round(processed / AUDIO_CHUNK_FRAMES) % 10 === 0) {
-        onProgress(50 + Math.round((processed / totalSamples) * 45)); // 50–95%
+        onProgress(50 + Math.round((processed / totalSamples) * 45), "GPU-Accelerated Rendering (Encoding Audio)..."); // 50–95%
       }
     }
 
+    if (videoError) throw videoError;
+    if (audioError) throw audioError;
+    onProgress(95, "GPU-Accelerated Rendering (Finalizing Container)...");
     await audioEncoder.flush();
     if (videoError) throw videoError;
     if (audioError) throw audioError;
 
     muxer.finalize();
 
-    onProgress(100);
+    onProgress(100, "Render Complete!");
     return new Blob([target.buffer], { type: 'video/mp4' });
   } finally {
     img.close();
@@ -298,11 +400,14 @@ async function encodeWithFFmpeg(
   audioBlob: Blob,
   duration: number,
   options: VideoExportOptions,
-  onProgress: (pct: number) => void
+  onProgress: (pct: number, status?: string) => void
 ): Promise<Blob> {
+  onProgress(0, "CPU Fallback Rendering (WASM Engine starting)...");
   const ff = await getFFmpeg();
   const imgExt = imageFile.name.split('.').pop() || 'jpg';
   const imgName = `cover.${imgExt}`;
+  
+  onProgress(2, "CPU Fallback Rendering (Preparing input files)...");
   await ff.writeFile(imgName, await fetchFile(imageFile));
   await ff.writeFile('audio.wav', await fetchFile(audioBlob));
 
@@ -343,12 +448,13 @@ async function encodeWithFFmpeg(
     stopTimer();
   }
 
+  onProgress(97, "CPU Fallback Rendering (Reading finished file)...");
   const data = await ff.readFile('output.mp4');
   await ff.deleteFile(imgName);
   await ff.deleteFile('audio.wav');
   await ff.deleteFile('output.mp4');
 
-  onProgress(100);
+  onProgress(100, "Render Complete!");
   return new Blob([data as any], { type: 'video/mp4' });
 }
 
@@ -360,7 +466,7 @@ export async function exportIndividualVideo(
   renderedBuffer: AudioBuffer,
   audioBlob: Blob,
   options: VideoExportOptions,
-  onProgress: (pct: number) => void
+  onProgress: (pct: number, status?: string) => void
 ): Promise<Blob> {
   if (isWebCodecsSupported()) {
     try {
@@ -380,7 +486,7 @@ export async function exportAlbumVideo(
   renderedBuffers: AudioBuffer[],
   audioBlobs: Blob[],
   options: VideoExportOptions,
-  onProgress: (pct: number) => void
+  onProgress: (pct: number, status?: string) => void
 ): Promise<Blob> {
   if (isWebCodecsSupported()) {
     try {
@@ -456,12 +562,13 @@ export async function exportAlbumVideo(
     stopTimer();
   }
 
+  onProgress(97, "CPU Fallback Rendering (Reading finished file)...");
   const data = await ff.readFile('album_output.mp4');
   await ff.deleteFile(imgName);
   await ff.deleteFile('concat.txt');
   for (let i = 0; i < audioBlobs.length; i++) await ff.deleteFile(`track_${i}.wav`);
   await ff.deleteFile('album_output.mp4');
 
-  onProgress(100);
+  onProgress(100, "Render Complete!");
   return new Blob([data as any], { type: 'video/mp4' });
 }
