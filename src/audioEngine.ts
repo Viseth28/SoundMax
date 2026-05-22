@@ -162,7 +162,7 @@ export class AudioGraph {
 
     // Split summed gain back to L & R inputs of merger
     lowMonoGain.connect(lowMerger, 0, 0);
-    lowMonoGain.connect(lowMonoGain, 0, 1);
+    lowMonoGain.connect(lowMerger, 0, 1);
 
     const monoBlendGain = this.ctx.createGain();
     const stereoBlendGain = this.ctx.createGain();

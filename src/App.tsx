@@ -197,12 +197,22 @@ export default function App() {
         });
         
         // Decode in background
-        const buffer = await decodeAudioFile(file);
-        setFiles(prev => {
-          const updated = prev.map(f => f.id === id ? { ...f, duration: buffer.duration, buffer } : f);
-          filesRef.current = updated;
-          return updated;
-        });
+        try {
+          const buffer = await decodeAudioFile(file);
+          setFiles(prev => {
+            const updated = prev.map(f => f.id === id ? { ...f, duration: buffer.duration, buffer } : f);
+            filesRef.current = updated;
+            return updated;
+          });
+        } catch (err) {
+          console.error(`Error decoding file ${file.name}:`, err);
+          alert(`Failed to decode audio file "${file.name}". Please ensure it is a valid, uncorrupted audio format.`);
+          setFiles(prev => {
+            const updated = prev.filter(f => f.id !== id);
+            filesRef.current = updated;
+            return updated;
+          });
+        }
       }
     }
   };
