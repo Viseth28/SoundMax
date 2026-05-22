@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Play, Pause, Settings, X, Download, Sparkles, Video, SkipBack, SkipForward, Volume2, VolumeX, Repeat, Shuffle, Music } from 'lucide-react';
+import { Upload, Play, Pause, Settings, X, Download, Sparkles, Video, Volume2, VolumeX, Music } from 'lucide-react';
 import { AudioGraph, type AudioParameters, defaultParams, presets } from './audioEngine';
 import { encodeWAV } from './wavEncoder';
 import { encodeMP3 } from './mp3Encoder';
@@ -57,8 +57,6 @@ export default function App() {
     return saved ? parseFloat(saved) : 1.0;
   });
   const [isMuted, setIsMuted] = useState(false);
-  const [isRepeat, setIsRepeat] = useState(false);
-  const [isShuffle, setIsShuffle] = useState(false);
 
   const handleVideoExport = async () => {
     if (!videoConfig.imageFile || files.length === 0) return;
@@ -235,14 +233,10 @@ export default function App() {
   const filesRef = useRef(files);
   const playingIdRef = useRef(playingId);
   const isPlayingRef = useRef(isPlaying);
-  const isRepeatRef = useRef(isRepeat);
-  const isShuffleRef = useRef(isShuffle);
 
   useEffect(() => { filesRef.current = files; }, [files]);
   useEffect(() => { playingIdRef.current = playingId; }, [playingId]);
   useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
-  useEffect(() => { isRepeatRef.current = isRepeat; }, [isRepeat]);
-  useEffect(() => { isShuffleRef.current = isShuffle; }, [isShuffle]);
 
   const startPlaybackTimer = (duration: number) => {
     if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
@@ -352,61 +346,17 @@ export default function App() {
     
     if (currentFiles.length === 0) return;
     
-    if (isRepeatRef.current && currentPlayingId) {
-      playTrack(currentPlayingId, 0);
-      return;
-    }
-    
-    const currentIndex = currentFiles.findIndex(f => f.id === currentPlayingId);
-    if (isShuffleRef.current) {
-      const playable = currentFiles.filter(f => f.buffer !== null);
-      if (playable.length > 0) {
-        let randomFile = playable[Math.floor(Math.random() * playable.length)];
-        if (playable.length > 1 && randomFile.id === currentPlayingId) {
-          const otherPlayable = playable.filter(f => f.id !== currentPlayingId);
-          randomFile = otherPlayable[Math.floor(Math.random() * otherPlayable.length)];
-        }
-        playTrack(randomFile.id, 0);
-      }
-    } else {
-      if (currentIndex === -1) {
-        const firstPlayable = currentFiles.find(f => f.buffer !== null);
-        if (firstPlayable) playTrack(firstPlayable.id, 0);
-      } else {
-        const nextIndex = (currentIndex + 1) % currentFiles.length;
-        const nextFile = currentFiles[nextIndex];
-        if (nextFile && nextFile.buffer) {
-          playTrack(nextFile.id, 0);
-        } else {
-          const decodedFile = currentFiles.slice(nextIndex).find(f => f.buffer !== null) || currentFiles.find(f => f.buffer !== null);
-          if (decodedFile) playTrack(decodedFile.id, 0);
-        }
-      }
-    }
-  };
-
-  const handlePrevTrack = () => {
-    const currentFiles = filesRef.current;
-    const currentPlayingId = playingIdRef.current;
-    
-    if (currentFiles.length === 0) return;
-    
-    if (currentPlaybackTime > 3 && currentPlayingId) {
-      playTrack(currentPlayingId, 0);
-      return;
-    }
-
     const currentIndex = currentFiles.findIndex(f => f.id === currentPlayingId);
     if (currentIndex === -1) {
       const firstPlayable = currentFiles.find(f => f.buffer !== null);
       if (firstPlayable) playTrack(firstPlayable.id, 0);
     } else {
-      const prevIndex = (currentIndex - 1 + currentFiles.length) % currentFiles.length;
-      const prevFile = currentFiles[prevIndex];
-      if (prevFile && prevFile.buffer) {
-        playTrack(prevFile.id, 0);
+      const nextIndex = (currentIndex + 1) % currentFiles.length;
+      const nextFile = currentFiles[nextIndex];
+      if (nextFile && nextFile.buffer) {
+        playTrack(nextFile.id, 0);
       } else {
-        const decodedFile = currentFiles.slice(0, prevIndex + 1).reverse().find(f => f.buffer !== null) || currentFiles.find(f => f.buffer !== null);
+        const decodedFile = currentFiles.slice(nextIndex).find(f => f.buffer !== null) || currentFiles.find(f => f.buffer !== null);
         if (decodedFile) playTrack(decodedFile.id, 0);
       }
     }
@@ -995,46 +945,12 @@ export default function App() {
           {/* Controls */}
           <div className="flex items-center gap-5">
             <button 
-              onClick={() => setIsShuffle(!isShuffle)} 
-              className={`transition-colors p-1 rounded-full ${isShuffle ? 'text-amber-500 hover:text-amber-400' : 'text-zinc-500 hover:text-zinc-300'}`}
-              title="Shuffle"
-            >
-              <Shuffle size={16} />
-            </button>
-
-            <button 
-              onClick={handlePrevTrack} 
-              disabled={files.length === 0} 
-              className="text-zinc-400 hover:text-white disabled:opacity-30 transition-colors p-1"
-              title="Previous Track"
-            >
-              <SkipBack size={20} />
-            </button>
-
-            <button 
               onClick={() => playingId && togglePlayback(playingId)} 
               disabled={!playingId} 
               className="w-8 h-8 rounded-full bg-white text-zinc-950 flex items-center justify-center hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all shadow-[0_0_15px_rgba(255,255,255,0.2)]"
               title={isPlaying ? 'Pause' : 'Play'}
             >
               {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} className="ml-0.5" fill="currentColor" />}
-            </button>
-
-            <button 
-              onClick={handleNextTrack} 
-              disabled={files.length === 0} 
-              className="text-zinc-400 hover:text-white disabled:opacity-30 transition-colors p-1"
-              title="Next Track"
-            >
-              <SkipForward size={20} />
-            </button>
-
-            <button 
-              onClick={() => setIsRepeat(!isRepeat)} 
-              className={`transition-colors p-1 rounded-full ${isRepeat ? 'text-amber-500 hover:text-amber-400' : 'text-zinc-500 hover:text-zinc-300'}`}
-              title="Repeat One"
-            >
-              <Repeat size={16} />
             </button>
           </div>
 
