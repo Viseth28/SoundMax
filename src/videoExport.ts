@@ -131,13 +131,12 @@ async function encodeWithWebCodecs(
     error: (e) => { videoError = e; },
   });
   videoEncoder.configure({
-    codec: 'avc1.4d002a',        
+    codec: 'avc1.4d4028',        
     width: OUTPUT_WIDTH,
     height: OUTPUT_HEIGHT,
     bitrate: 4_000_000,          
-    framerate: FPS,
-    hardwareAcceleration: 'prefer-hardware',
-    latencyMode: 'quality',      // 🚀 Tells the GPU this is an offline render, not a live stream
+    framerate: 24, // Use 24 as a rate-control hint to avoid validation errors, while actual frames are fed at 1 FPS
+    hardwareAcceleration: 'no-preference', // Changed to no-preference for automatic software fallback
     avc: { format: 'avc' },
   });
 
@@ -152,6 +151,11 @@ async function encodeWithWebCodecs(
     sampleRate,
     bitrate: 192_000,            // 192 kbps
   });
+
+  // Yield to allow async initialization errors to propagate
+  await new Promise(resolve => setTimeout(resolve, 100));
+  if (videoError) throw videoError;
+  if (audioError) throw audioError;
 
   // Backpressure queue
 // 🚀 Change limit from 20 to 120
@@ -200,6 +204,7 @@ async function encodeWithWebCodecs(
     const timestamp = Math.round((processed / sampleRate) * 1_000_000);
 
     await waitForDrain(audioEncoder);
+    if (videoError) throw videoError;
     if (audioError) throw audioError;
     if (audioEncoder.state === 'closed') throw new Error('Audio encoder closed unexpectedly.');
 
@@ -290,7 +295,12 @@ export async function exportIndividualVideo(
   onProgress: (pct: number) => void
 ): Promise<Blob> {
   if (isWebCodecsSupported()) {
-    return encodeWithWebCodecs(imageFile, renderedBuffer, onProgress);
+    try {
+      return await encodeWithWebCodecs(imageFile, renderedBuffer, onProgress);
+    } catch (e) {
+      console.warn("WebCodecs encoding failed, falling back to FFmpeg:", e);
+      // Fallback seamlessly to FFmpeg
+    }
   }
   return encodeWithFFmpeg(imageFile, audioBlob, renderedBuffer.duration, onProgress);
 }
@@ -305,22 +315,27 @@ export async function exportAlbumVideo(
   onProgress: (pct: number) => void
 ): Promise<Blob> {
   if (isWebCodecsSupported()) {
-    // Merge all AudioBuffers into one
-    const sampleRate = renderedBuffers[0].sampleRate;
-    const numChannels = Math.min(renderedBuffers[0].numberOfChannels, 2);
-    const totalLength = renderedBuffers.reduce((sum, b) => sum + b.length, 0);
-    const mergedCtx = new OfflineAudioContext(numChannels, totalLength, sampleRate);
-    const mergedBuffer = mergedCtx.createBuffer(numChannels, totalLength, sampleRate);
+    try {
+      // Merge all AudioBuffers into one
+      const sampleRate = renderedBuffers[0].sampleRate;
+      const numChannels = Math.min(renderedBuffers[0].numberOfChannels, 2);
+      const totalLength = renderedBuffers.reduce((sum, b) => sum + b.length, 0);
+      const mergedCtx = new OfflineAudioContext(numChannels, totalLength, sampleRate);
+      const mergedBuffer = mergedCtx.createBuffer(numChannels, totalLength, sampleRate);
 
-    let offset = 0;
-    for (const buf of renderedBuffers) {
-      for (let c = 0; c < numChannels; c++) {
-        mergedBuffer.getChannelData(c).set(buf.getChannelData(c), offset);
+      let offset = 0;
+      for (const buf of renderedBuffers) {
+        for (let c = 0; c < numChannels; c++) {
+          mergedBuffer.getChannelData(c).set(buf.getChannelData(c), offset);
+        }
+        offset += buf.length;
       }
-      offset += buf.length;
-    }
 
-    return encodeWithWebCodecs(imageFile, mergedBuffer, onProgress);
+      return await encodeWithWebCodecs(imageFile, mergedBuffer, onProgress);
+    } catch (e) {
+      console.warn("WebCodecs album encoding failed, falling back to FFmpeg:", e);
+      // Fallback seamlessly to FFmpeg
+    }
   }
 
   // FFmpeg fallback: concatenate wav files

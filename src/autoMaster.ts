@@ -54,6 +54,8 @@ export function calculateAutoMaster(buffer: AudioBuffer): AudioParameters {
     compRatio: Math.round(compRatio * 10) / 10,
     limitCeiling: -0.3,
     saturation: Math.round(saturation),
+    satMode: 0, // Tube Warmth by default
+    subMono: 100, // Mono summed low end by default
     echo: 0,
     reverb: 0, // Don't add spatial effects automatically as they ruin mixes
     stereoWidth: 105, // Slight widening by default
