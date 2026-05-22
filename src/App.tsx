@@ -6,6 +6,7 @@ import { encodeMP3 } from './mp3Encoder';
 import { encodeFLAC } from './flacEncoder';
 import { calculateAutoMaster } from './autoMaster';
 import { exportIndividualVideo, exportAlbumVideo, isWebCodecsSupported } from './videoExport';
+import Knob from './components/Knob';
 
 interface QueuedFile {
   id: string;
@@ -560,18 +561,91 @@ export default function App() {
       </header>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col p-6 overflow-hidden gap-6">
+      <div className="flex-1 flex flex-row p-6 overflow-hidden gap-6 h-[calc(100vh-5rem)]">
         
-        {/* Batch Queue Panel */}
+        {/* Left Column: Visualizer & Mastering Console */}
+        <div className="flex-1 flex flex-col gap-6 h-full min-w-0">
+          
+          {/* Spectrum Analyzer Panel */}
+          <Visualizer analyser={analyserNode} />
+
+          {/* Settings Console (Bottom Panel) - Snug visual height fitted to knobs */}
+          <div className="h-[240px] shrink-0 bg-zinc-900 rounded-xl border border-zinc-800 flex flex-col p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)]">
+            <div className="flex justify-between items-center mb-6 shrink-0">
+              <h2 className="text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2">
+                <Settings size={16} /> MASTERING CONSOLE
+              </h2>
+              <div className="flex items-center gap-2">
+                <button onClick={handleAutoMaster} className="mr-2 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold tracking-wider rounded shadow-[0_0_10px_rgba(245,158,11,0.5)] flex items-center gap-1.5 transition-all">
+                  <Sparkles size={14} /> AUTO-MASTER
+                </button>
+                <div className="w-px h-6 bg-zinc-800 mx-2"></div>
+                <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Preset:</label>
+                <select 
+                  value={presetName} 
+                  onChange={handlePresetChange} 
+                  className="bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 rounded p-1 outline-none focus:border-amber-500 shadow-sm"
+                >
+                  <option value="Custom" className="italic text-zinc-500">Custom</option>
+                  <option value="AI Mastered" className="font-bold text-amber-300" disabled>AI Mastered ✦</option>
+                  {Object.keys(presets).map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+            </div>
+            
+            <div className="flex-1 flex justify-around items-center pb-2 overflow-x-auto min-h-0">
+              {/* EQ Section */}
+              <SliderGroup title="EQ / TONE">
+                <Knob label="Bass" value={params.eqBass} min={-24} max={24} defaultValue={0} color="orange" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqBass')} />
+                <Knob label="Deep" value={params.eqDeep} min={-24} max={24} defaultValue={0} color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqDeep')} />
+                <Knob label="Mid" value={params.eqMid} min={-24} max={24} defaultValue={0} color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqMid')} />
+              </SliderGroup>
+
+              <div className="w-px h-full bg-zinc-800 mx-4"></div>
+
+              {/* Dynamics Section */}
+              <SliderGroup title="DYNAMICS">
+                <Knob label="Comp" value={params.compThreshold} min={-60} max={0} defaultValue={-24} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compThreshold')} />
+                <Knob label="Ratio" value={params.compRatio} min={1} max={20} step={0.1} defaultValue={3} color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compRatio')} />
+                <Knob label="Limit" value={params.limitCeiling} min={-24} max={0} step={0.1} defaultValue={-0.1} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'limitCeiling')} />
+              </SliderGroup>
+
+              <div className="w-px h-full bg-zinc-800 mx-4"></div>
+
+              {/* Saturation Color Section */}
+              <SliderGroup title="COLOR / TONE">
+                <Knob label="Drive" value={params.saturation} min={0} max={100} defaultValue={0} unit="%" color="gold" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'saturation')} />
+              </SliderGroup>
+
+              <div className="w-px h-full bg-zinc-800 mx-4"></div>
+
+              {/* Space / Mono Section */}
+              <SliderGroup title="SPACE / MONO">
+                <Knob label="Width" value={params.stereoWidth} min={0} max={200} defaultValue={100} unit="%" color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'stereoWidth')} />
+                <Knob label="Verb" value={params.reverb} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'reverb')} />
+                <Knob label="Echo" value={params.echo} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'echo')} />
+              </SliderGroup>
+
+              <div className="w-px h-full bg-zinc-800 mx-4"></div>
+              
+              {/* Master */}
+              <SliderGroup title="MASTER">
+                <Knob label="Gain" value={params.gain} min={-24} max={24} defaultValue={6} unit="dB" color="rose" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'gain')} />
+              </SliderGroup>
+            </div>
+          </div>
+        </div>
+
+        {/* Right Column: Batch Queue Panel */}
         <div 
-          className={`flex-1 rounded-xl border flex flex-col overflow-hidden shadow-lg relative transition-colors ${isDragging ? 'bg-zinc-800 border-amber-500' : 'bg-zinc-900 border-zinc-800'}`}
+          className={`w-[450px] rounded-xl border flex flex-col overflow-hidden shadow-lg relative transition-colors shrink-0 h-full ${isDragging ? 'bg-zinc-800 border-amber-500' : 'bg-zinc-900 border-zinc-800'}`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
         >
           <div className="px-4 py-3 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/80 backdrop-blur-sm z-10">
-            <h2 className="text-sm font-semibold text-zinc-300">BATCH QUEUE</h2>
-            <label className="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-slate-600 rounded text-xs transition-colors">
+            <h2 className="text-sm font-semibold text-zinc-300 tracking-wider">BATCH QUEUE</h2>
+            <label className="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-slate-600 rounded text-xs font-bold text-zinc-200 transition-colors">
               <Upload size={14} /> Add Files
               <input type="file" multiple accept="audio/*" className="hidden" onChange={handleFileUpload} />
             </label>
@@ -580,17 +654,17 @@ export default function App() {
             {files.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-zinc-500 border-2 border-dashed border-zinc-800 rounded-lg">
                 <Upload size={32} className="mb-2 opacity-50" />
-                <p>Drag & Drop audio files here or click Add Files</p>
+                <p className="text-xs text-center px-4">Drag & Drop audio files here or click Add Files</p>
               </div>
             ) : (
-              <table className="w-full text-left text-sm border-collapse">
+              <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="text-zinc-400 border-b border-zinc-800">
                     <th className="pb-2 font-medium">Filename</th>
-                    <th className="pb-2 font-medium w-24">Duration</th>
-                    <th className="pb-2 font-medium w-24">Type</th>
-                    <th className="pb-2 font-medium w-32">Status</th>
-                    <th className="pb-2 font-medium w-24 text-right">Actions</th>
+                    <th className="pb-2 font-medium w-14">Dur.</th>
+                    <th className="pb-2 font-medium w-14">Type</th>
+                    <th className="pb-2 font-medium w-24">Status</th>
+                    <th className="pb-2 font-medium w-10 text-right"></th>
                   </tr>
                 </thead>
                 <tbody>
@@ -600,18 +674,18 @@ export default function App() {
                       className={`border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors group cursor-pointer ${playingId === f.id ? 'bg-amber-500/5' : ''}`}
                       onClick={() => f.buffer && togglePlayback(f.id)}
                     >
-                      <td className="py-3 text-zinc-200 truncate max-w-[200px] font-medium flex items-center gap-2">
+                      <td className="py-3 text-zinc-200 truncate max-w-[150px] font-medium flex items-center gap-2">
                         {playingId === f.id && isPlaying ? (
-                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
                         ) : null}
                         {f.name}
                       </td>
                       <td className="py-3 text-zinc-400">
                         {f.duration ? `${Math.floor(f.duration / 60)}:${Math.floor(f.duration % 60).toString().padStart(2, '0')}` : '--'}
                       </td>
-                      <td className="py-3 text-zinc-400 text-xs">{f.type.split('/')[1]?.toUpperCase() || 'AUDIO'}</td>
+                      <td className="py-3 text-zinc-400 text-[10px]">{f.type.split('/')[1]?.toUpperCase() || 'AUDIO'}</td>
                       <td className="py-3">
-                        <span className={`text-xs px-2 py-1 rounded-full ${
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full ${
                           f.status === 'Completed' ? 'bg-emerald-900/50 text-emerald-400' :
                           f.status === 'Processing' ? 'bg-amber-900/50 text-amber-400 animate-pulse' :
                           'bg-zinc-800 text-zinc-400'
@@ -621,8 +695,8 @@ export default function App() {
                       </td>
                       <td className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => removeFile(f.id)} title="Remove" className="p-2 bg-zinc-800 hover:bg-red-500 rounded-full transition-colors opacity-50 hover:opacity-100 group-hover:opacity-100">
-                            <X size={14} className="text-zinc-300 hover:text-white" />
+                          <button onClick={() => removeFile(f.id)} title="Remove" className="p-1 bg-zinc-800 hover:bg-red-500 rounded-full transition-colors opacity-50 hover:opacity-100 group-hover:opacity-100">
+                            <X size={12} className="text-zinc-300 hover:text-white" />
                           </button>
                         </div>
                       </td>
@@ -631,74 +705,6 @@ export default function App() {
                 </tbody>
               </table>
             )}
-          </div>
-        </div>
-
-        {/* Settings Console (Bottom Panel) */}
-        <div className="h-[420px] bg-zinc-900 rounded-xl border border-zinc-800 flex flex-col p-4 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)]">
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2">
-              <Settings size={16} /> MASTERING CONSOLE
-            </h2>
-            <div className="flex items-center gap-2">
-              <button onClick={handleAutoMaster} className="mr-2 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold tracking-wider rounded shadow-[0_0_10px_rgba(245,158,11,0.5)] flex items-center gap-1.5 transition-all">
-                <Sparkles size={14} /> AUTO-MASTER
-              </button>
-              <div className="w-px h-6 bg-zinc-800 mx-2"></div>
-              <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Preset:</label>
-              <select 
-                value={presetName} 
-                onChange={handlePresetChange} 
-                className="bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 rounded p-1 outline-none focus:border-amber-500 shadow-sm"
-              >
-                <option value="Custom" className="italic text-zinc-500">Custom</option>
-                <option value="AI Mastered" className="font-bold text-amber-300" disabled>AI Mastered ✦</option>
-                {Object.keys(presets).map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-            </div>
-          </div>
-          
-          <Visualizer analyser={analyserNode} />
-
-          <div className="flex-1 flex justify-around items-end pb-2 overflow-x-auto mt-4">
-            {/* EQ Section */}
-            <SliderGroup title="EQ / TONE">
-              <VerticalSlider label="Bass" value={params.eqBass} min={-24} max={24} onChange={e => handleSliderChange(e, 'eqBass')} />
-              <VerticalSlider label="Deep" value={params.eqDeep} min={-24} max={24} onChange={e => handleSliderChange(e, 'eqDeep')} />
-              <VerticalSlider label="Mid" value={params.eqMid} min={-24} max={24} onChange={e => handleSliderChange(e, 'eqMid')} />
-            </SliderGroup>
-
-            <div className="w-px h-full bg-zinc-800 mx-4"></div>
-
-            {/* Dynamics Section */}
-            <SliderGroup title="DYNAMICS">
-              <VerticalSlider label="Comp" value={params.compThreshold} min={-60} max={0} onChange={e => handleSliderChange(e, 'compThreshold')} />
-              <VerticalSlider label="Ratio" value={params.compRatio} min={1} max={20} step={0.1} onChange={e => handleSliderChange(e, 'compRatio')} />
-              <VerticalSlider label="Limit" value={params.limitCeiling} min={-24} max={0} step={0.1} onChange={e => handleSliderChange(e, 'limitCeiling')} />
-            </SliderGroup>
-
-            <div className="w-px h-full bg-zinc-800 mx-4"></div>
-
-            {/* Saturation Color Section */}
-            <SliderGroup title="COLOR / TONE">
-              <VerticalSlider label="Drive" value={params.saturation} min={0} max={100} onChange={e => handleSliderChange(e, 'saturation')} />
-            </SliderGroup>
-
-            <div className="w-px h-full bg-zinc-800 mx-4"></div>
-
-            {/* Space / Mono Section */}
-            <SliderGroup title="SPACE / MONO">
-              <VerticalSlider label="Width" value={params.stereoWidth} min={0} max={200} onChange={e => handleSliderChange(e, 'stereoWidth')} />
-              <VerticalSlider label="Verb" value={params.reverb} min={0} max={100} onChange={e => handleSliderChange(e, 'reverb')} />
-              <VerticalSlider label="Echo" value={params.echo} min={0} max={100} onChange={e => handleSliderChange(e, 'echo')} />
-            </SliderGroup>
-
-            <div className="w-px h-full bg-zinc-800 mx-4"></div>
-            
-            {/* Master */}
-            <SliderGroup title="MASTER">
-              <VerticalSlider label="Gain" value={params.gain} min={-24} max={24} onChange={e => handleSliderChange(e, 'gain')} />
-            </SliderGroup>
           </div>
         </div>
       </div>
@@ -1066,30 +1072,6 @@ function SliderGroup({ title, children }: { title: string, children: React.React
         {children}
       </div>
       <div className="text-[10px] font-bold text-zinc-500 tracking-widest mt-2">{title}</div>
-    </div>
-  );
-}
-
-function VerticalSlider({ label, value, min, max, step = 1, onChange }: { label: string, value: number, min: number, max: number, step?: number, onChange: (e: React.ChangeEvent<HTMLInputElement>) => void }) {
-  return (
-    <div className="flex flex-col items-center h-full w-12 group">
-      <div className="flex-1 relative flex justify-center py-2">
-        <input 
-          type="range" 
-          // @ts-ignore - React type for orientation is missing but standard DOM supports it
-          orientation="vertical" 
-          className="w-1.5 h-full rounded-full appearance-none bg-zinc-950 outline-none slider-vertical cursor-ns-resize shadow-[inset_0_1px_3px_rgba(0,0,0,0.8)]"
-          style={{
-            WebkitAppearance: 'slider-vertical',
-          }}
-          min={min} max={max} step={step} value={value} onChange={onChange} 
-        />
-        <div className="pointer-events-none absolute bottom-0 w-4 h-[2px] bg-amber-500 rounded opacity-0 group-hover:opacity-100 transition-opacity" style={{ bottom: `${((value - min) / (max - min)) * 100}%` }}></div>
-      </div>
-      <div className="text-center mt-1">
-        <div className="text-white text-xs font-mono">{value > 0 && max > 100 ? `+${value}` : value}</div>
-        <div className="text-[9px] text-zinc-400 uppercase tracking-wider">{label}</div>
-      </div>
     </div>
   );
 }
