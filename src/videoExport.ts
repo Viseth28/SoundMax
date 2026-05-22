@@ -468,7 +468,7 @@ export async function exportIndividualVideo(
   onProgress: (pct: number, status?: string) => void
 ): Promise<Blob> {
   const options: VideoExportOptions = {
-    fps: 24,
+    fps: 1,
     quality: 'high',
     resolution: '1080p',
     audioBitrate: 192000
@@ -494,7 +494,7 @@ export async function exportAlbumVideo(
   onProgress: (pct: number, status?: string) => void
 ): Promise<Blob> {
   const options: VideoExportOptions = {
-    fps: 24,
+    fps: 1,
     quality: 'high',
     resolution: '1080p',
     audioBitrate: 192000
