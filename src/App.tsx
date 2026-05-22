@@ -628,28 +628,6 @@ export default function App() {
               <Settings size={16} /> MASTERING CONSOLE
             </h2>
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-zinc-500 font-bold uppercase tracking-wider">Saturation:</span>
-              <div className="bg-zinc-950 p-0.5 rounded border border-zinc-800 flex gap-0.5">
-                <button
-                  onClick={() => {
-                    setParams(p => ({ ...p, satMode: 0 }));
-                    setPresetName("Custom");
-                  }}
-                  className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest rounded transition-colors ${params.satMode === 0 ? 'bg-amber-500 text-zinc-950' : 'text-zinc-400 hover:text-zinc-200'}`}
-                >
-                  TUBE
-                </button>
-                <button
-                  onClick={() => {
-                    setParams(p => ({ ...p, satMode: 1 }));
-                    setPresetName("Custom");
-                  }}
-                  className={`px-2.5 py-1 text-[9px] font-bold uppercase tracking-widest rounded transition-colors ${params.satMode === 1 ? 'bg-amber-500 text-zinc-950' : 'text-zinc-400 hover:text-zinc-200'}`}
-                >
-                  TAPE
-                </button>
-              </div>
-              <div className="w-px h-6 bg-zinc-800 mx-2"></div>
               <button onClick={handleAutoMaster} className="mr-2 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold tracking-wider rounded shadow-[0_0_10px_rgba(245,158,11,0.5)] flex items-center gap-1.5 transition-all">
                 <Sparkles size={14} /> AUTO-MASTER
               </button>
@@ -698,7 +676,6 @@ export default function App() {
             {/* Space / Mono Section */}
             <SliderGroup title="SPACE / MONO">
               <VerticalSlider label="Width" value={params.stereoWidth} min={0} max={200} onChange={e => handleSliderChange(e, 'stereoWidth')} />
-              <VerticalSlider label="SubMono" value={params.subMono} min={0} max={100} onChange={e => handleSliderChange(e, 'subMono')} />
               <VerticalSlider label="Verb" value={params.reverb} min={0} max={100} onChange={e => handleSliderChange(e, 'reverb')} />
               <VerticalSlider label="Echo" value={params.echo} min={0} max={100} onChange={e => handleSliderChange(e, 'echo')} />
             </SliderGroup>

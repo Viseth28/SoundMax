@@ -77,7 +77,7 @@ async function encodeWithWebCodecs(
 ): Promise<Blob> {
   const OUTPUT_WIDTH = 1920;
   const OUTPUT_HEIGHT = 1080;
-  const FPS = 1; // Reverted to 1 FPS per user request
+  const FPS = 24;
   const sampleRate = audioBuffer.sampleRate;
   const numChannels = Math.min(audioBuffer.numberOfChannels, 2);
   const duration = audioBuffer.duration;
@@ -135,7 +135,7 @@ async function encodeWithWebCodecs(
     width: OUTPUT_WIDTH,
     height: OUTPUT_HEIGHT,
     bitrate: 4_000_000,          
-    framerate: 24, // Use 24 as a rate-control hint to avoid validation errors, while actual frames are fed at 1 FPS
+    framerate: 24,
     hardwareAcceleration: 'no-preference', // Changed to no-preference for automatic software fallback
     avc: { format: 'avc' },
   });
