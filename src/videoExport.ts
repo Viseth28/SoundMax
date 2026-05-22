@@ -3,8 +3,15 @@ import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
 // ─────────────────────────────────────────
-// Capability Detection
+// Capability & Interface Definitions
 // ─────────────────────────────────────────
+export interface VideoExportOptions {
+  fps: number; // 1, 15, 24, 30, 60
+  quality: 'low' | 'medium' | 'high' | 'ultra';
+  resolution: '720p' | '1080p' | '1440p' | '4k';
+  audioBitrate: number; // 128000, 192000, 256000, 320000
+}
+
 export function isWebCodecsSupported(): boolean {
   return (
     typeof VideoEncoder !== 'undefined' &&
@@ -73,16 +80,31 @@ function startProgressTimer(durationSec: number, onProgress: (pct: number) => vo
 async function encodeWithWebCodecs(
   imageFile: File,
   audioBuffer: AudioBuffer,
+  options: VideoExportOptions,
   onProgress: (pct: number) => void
 ): Promise<Blob> {
-  const OUTPUT_WIDTH = 1920;
-  const OUTPUT_HEIGHT = 1080;
-  const FPS = 24;
+  const resolutionMap = {
+    '720p': { w: 1280, h: 720 },
+    '1080p': { w: 1920, h: 1080 },
+    '1440p': { w: 2560, h: 1440 },
+    '4k': { w: 3840, h: 2160 }
+  };
+  const { w: OUTPUT_WIDTH, h: OUTPUT_HEIGHT } = resolutionMap[options.resolution] || resolutionMap['1080p'];
+  const FPS = options.fps;
   const sampleRate = audioBuffer.sampleRate;
   const numChannels = Math.min(audioBuffer.numberOfChannels, 2);
   const duration = audioBuffer.duration;
   const totalVideoFrames = Math.ceil(duration * FPS);
   const AUDIO_CHUNK_FRAMES = 8192;
+
+  // Video bitrate mapping
+  const bitrateMap = {
+    '720p': { low: 1_500_000, medium: 3_000_000, high: 5_000_000, ultra: 8_000_000 },
+    '1080p': { low: 2_500_000, medium: 5_000_000, high: 8_000_000, ultra: 15_000_000 },
+    '1440p': { low: 5_000_000, medium: 10_000_000, high: 16_000_000, ultra: 25_000_000 },
+    '4k': { low: 10_000_000, medium: 20_000_000, high: 35_000_000, ultra: 60_000_000 }
+  };
+  const videoBitrate = bitrateMap[options.resolution]?.[options.quality] || 8_000_000;
 
   // ---- Apply a master gain boost (6 dB) to the export buffer ----
   const gainDb = 6;
@@ -95,9 +117,7 @@ async function encodeWithWebCodecs(
   source.connect(gainNode).connect(offlineCtx.destination);
   source.start();
   const boostedBuffer = await offlineCtx.startRendering();
-  // Use boostedBuffer for encoding
   const processedAudioBuffer = boostedBuffer;
-
 
   // Draw image to offscreen canvas (centered, letterboxed)
   const img = await createImageBitmap(imageFile);
@@ -130,13 +150,17 @@ async function encodeWithWebCodecs(
     output: (chunk, meta) => muxer.addVideoChunk(chunk, meta!),
     error: (e) => { videoError = e; },
   });
+
+  // Dynamically select AVC Profile/Level based on resolution/bitrate demands
+  const codec = (OUTPUT_WIDTH > 1920) ? 'avc1.640033' : 'avc1.4d4028';
+
   videoEncoder.configure({
-    codec: 'avc1.4d4028',        
+    codec,        
     width: OUTPUT_WIDTH,
     height: OUTPUT_HEIGHT,
-    bitrate: 4_000_000,          
-    framerate: 24,
-    hardwareAcceleration: 'no-preference', // Changed to no-preference for automatic software fallback
+    bitrate: videoBitrate,          
+    framerate: FPS === 1 ? 24 : FPS, // Fallback high frame rate hint to prevent 1 FPS validation crash on GPU drivers
+    hardwareAcceleration: 'no-preference', 
     avc: { format: 'avc' },
   });
 
@@ -149,7 +173,7 @@ async function encodeWithWebCodecs(
     codec: 'mp4a.40.2',          // AAC-LC
     numberOfChannels: numChannels,
     sampleRate,
-    bitrate: 192_000,            // 192 kbps
+    bitrate: options.audioBitrate,
   });
 
   // Yield to allow async initialization errors to propagate
@@ -158,25 +182,22 @@ async function encodeWithWebCodecs(
   if (audioError) throw audioError;
 
   // Backpressure queue
-// 🚀 Change limit from 20 to 120
   const waitForDrain = async (encoder: VideoEncoder | AudioEncoder, limit = 120) => {
     if (encoder.encodeQueueSize > limit) {
       while (encoder.encodeQueueSize > limit) {
         if (videoError) throw videoError;
         if (audioError) throw audioError;
-        // Yield to let the GPU catch up
         await new Promise(r => setTimeout(r, 1)); 
       }
     }
   };
 
-  // ── Encode video frames at 24fps ──
+  // ── Encode video frames ──
   const frameDurationUs = Math.round(1_000_000 / FPS);
   for (let i = 0; i < totalVideoFrames; i++) {
     await waitForDrain(videoEncoder);
     if (videoError) throw videoError;
 
-    // Pass the pre-rendered ImageBitmap instead of the Canvas
     const frame = new VideoFrame(preRenderedImage, {
       timestamp: i * frameDurationUs,
       duration: frameDurationUs,
@@ -192,7 +213,6 @@ async function encodeWithWebCodecs(
   if (videoError) throw videoError;
 
   // ── Encode audio chunks ──
-  // Use the boosted buffer for the rest of the encoding pipeline
   const exportAudioBuffer = processedAudioBuffer;
   const channelData: Float32Array[] = [];
   for (let c = 0; c < numChannels; c++) channelData.push(exportAudioBuffer.getChannelData(c));
@@ -235,7 +255,6 @@ async function encodeWithWebCodecs(
   await audioEncoder.flush();
   muxer.finalize();
 
-  // Clean up GPU memory
   preRenderedImage.close();
 
   onProgress(100);
@@ -249,6 +268,7 @@ async function encodeWithFFmpeg(
   imageFile: File,
   audioBlob: Blob,
   duration: number,
+  options: VideoExportOptions,
   onProgress: (pct: number) => void
 ): Promise<Blob> {
   const ff = await getFFmpeg();
@@ -257,18 +277,36 @@ async function encodeWithFFmpeg(
   await ff.writeFile(imgName, await fetchFile(imageFile));
   await ff.writeFile('audio.wav', await fetchFile(audioBlob));
 
+  const resolutionMap = {
+    '720p': { w: 1280, h: 720 },
+    '1080p': { w: 1920, h: 1080 },
+    '1440p': { w: 2560, h: 1440 },
+    '4k': { w: 3840, h: 2160 }
+  };
+  const { w: OUTPUT_WIDTH, h: OUTPUT_HEIGHT } = resolutionMap[options.resolution] || resolutionMap['1080p'];
+  const FPS = options.fps;
+
+  const bitrateMap = {
+    '720p': { low: '1500k', medium: '3000k', high: '5000k', ultra: '8000k' },
+    '1080p': { low: '2500k', medium: '5000k', high: '8000k', ultra: '15000k' },
+    '1440p': { low: '5000k', medium: '10000k', high: '16000k', ultra: '25000k' },
+    '4k': { low: '10000k', medium: '20000k', high: '35000k', ultra: '60000k' }
+  };
+  const videoBitrate = bitrateMap[options.resolution]?.[options.quality] || '8000k';
+  const audioBitrateStr = `${Math.round(options.audioBitrate / 1000)}k`;
+
   const stopTimer = startProgressTimer(duration, onProgress);
   try {
     await ff.exec([
-      '-loop', '1', '-framerate', '24', '-i', imgName, // Changed to 24
+      '-loop', '1', '-framerate', String(FPS), '-i', imgName,
       '-i', 'audio.wav',
       '-t', String(duration),
       '-threads', '0',
       '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage',
-      '-b:v', '8000k',           
-      '-c:a', 'aac', '-b:a', '320k',  
+      '-b:v', videoBitrate,           
+      '-c:a', 'aac', '-b:a', audioBitrateStr,  
       '-pix_fmt', 'yuv420p',
-      '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1',
+      '-vf', `scale=${OUTPUT_WIDTH}:${OUTPUT_HEIGHT}:force_original_aspect_ratio=decrease,pad=${OUTPUT_WIDTH}:${OUTPUT_HEIGHT}:(ow-iw)/2:(oh-ih)/2,setsar=1`,
       '-movflags', '+faststart',
       'output.mp4',
     ]);
@@ -292,17 +330,17 @@ export async function exportIndividualVideo(
   imageFile: File,
   renderedBuffer: AudioBuffer,
   audioBlob: Blob,
+  options: VideoExportOptions,
   onProgress: (pct: number) => void
 ): Promise<Blob> {
   if (isWebCodecsSupported()) {
     try {
-      return await encodeWithWebCodecs(imageFile, renderedBuffer, onProgress);
+      return await encodeWithWebCodecs(imageFile, renderedBuffer, options, onProgress);
     } catch (e) {
       console.warn("WebCodecs encoding failed, falling back to FFmpeg:", e);
-      // Fallback seamlessly to FFmpeg
     }
   }
-  return encodeWithFFmpeg(imageFile, audioBlob, renderedBuffer.duration, onProgress);
+  return encodeWithFFmpeg(imageFile, audioBlob, renderedBuffer.duration, options, onProgress);
 }
 
 // ─────────────────────────────────────────
@@ -312,11 +350,11 @@ export async function exportAlbumVideo(
   imageFile: File,
   renderedBuffers: AudioBuffer[],
   audioBlobs: Blob[],
+  options: VideoExportOptions,
   onProgress: (pct: number) => void
 ): Promise<Blob> {
   if (isWebCodecsSupported()) {
     try {
-      // Merge all AudioBuffers into one
       const sampleRate = renderedBuffers[0].sampleRate;
       const numChannels = Math.min(renderedBuffers[0].numberOfChannels, 2);
       const totalLength = renderedBuffers.reduce((sum, b) => sum + b.length, 0);
@@ -331,10 +369,9 @@ export async function exportAlbumVideo(
         offset += buf.length;
       }
 
-      return await encodeWithWebCodecs(imageFile, mergedBuffer, onProgress);
+      return await encodeWithWebCodecs(imageFile, mergedBuffer, options, onProgress);
     } catch (e) {
       console.warn("WebCodecs album encoding failed, falling back to FFmpeg:", e);
-      // Fallback seamlessly to FFmpeg
     }
   }
 
@@ -353,18 +390,36 @@ export async function exportAlbumVideo(
   }
   await ff.writeFile('concat.txt', concatContent);
 
+  const resolutionMap = {
+    '720p': { w: 1280, h: 720 },
+    '1080p': { w: 1920, h: 1080 },
+    '1440p': { w: 2560, h: 1440 },
+    '4k': { w: 3840, h: 2160 }
+  };
+  const { w: OUTPUT_WIDTH, h: OUTPUT_HEIGHT } = resolutionMap[options.resolution] || resolutionMap['1080p'];
+  const FPS = options.fps;
+
+  const bitrateMap = {
+    '720p': { low: '1500k', medium: '3000k', high: '5000k', ultra: '8000k' },
+    '1080p': { low: '2500k', medium: '5000k', high: '8000k', ultra: '15000k' },
+    '1440p': { low: '5000k', medium: '10000k', high: '16000k', ultra: '25000k' },
+    '4k': { low: '10000k', medium: '20000k', high: '35000k', ultra: '60000k' }
+  };
+  const videoBitrate = bitrateMap[options.resolution]?.[options.quality] || '8000k';
+  const audioBitrateStr = `${Math.round(options.audioBitrate / 1000)}k`;
+
   const stopTimer = startProgressTimer(totalDuration, onProgress);
   try {
     await ff.exec([
-      '-loop', '1', '-framerate', '24', '-i', imgName, // Changed to 24
+      '-loop', '1', '-framerate', String(FPS), '-i', imgName,
       '-f', 'concat', '-safe', '0', '-i', 'concat.txt',
       '-t', String(totalDuration),
       '-threads', '0',
       '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage',
-      '-b:v', '8000k',
-      '-c:a', 'aac', '-b:a', '320k',
+      '-b:v', videoBitrate,
+      '-c:a', 'aac', '-b:a', audioBitrateStr,
       '-pix_fmt', 'yuv420p',
-      '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1',
+      '-vf', `scale=${OUTPUT_WIDTH}:${OUTPUT_HEIGHT}:force_original_aspect_ratio=decrease,pad=${OUTPUT_WIDTH}:${OUTPUT_HEIGHT}:(ow-iw)/2:(oh-ih)/2,setsar=1`,
       '-movflags', '+faststart',
       'album_output.mp4',
     ]);
