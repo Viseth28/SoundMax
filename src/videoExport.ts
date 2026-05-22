@@ -77,7 +77,7 @@ async function encodeWithWebCodecs(
 ): Promise<Blob> {
   const OUTPUT_WIDTH = 1920;
   const OUTPUT_HEIGHT = 1080;
-  const FPS = 24;             // Changed to 24 FPS (Cinema standard, faster render)
+  const FPS = 1; // Reverted to 1 FPS per user request
   const sampleRate = audioBuffer.sampleRate;
   const numChannels = Math.min(audioBuffer.numberOfChannels, 2);
   const duration = audioBuffer.duration;
@@ -181,9 +181,7 @@ async function encodeWithWebCodecs(
     frame.close();
     
     // Throttle UI updates
-    if (i % 48 === 0) { // Changed to 48 (2 seconds of frames at 24fps)
-      onProgress(Math.round((i / totalVideoFrames) * 50)); // 0–50%
-    }
+    onProgress(Math.round((i / totalVideoFrames) * 50)); // 0–50%
   }
 
   await videoEncoder.flush();
