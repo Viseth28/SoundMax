@@ -164,7 +164,7 @@ export class AudioGraph {
     };
   }
 
-  applyParameters(params: AudioParameters) {
+  applyParameters(params: AudioParameters, volume: number = 1.0) {
     this.nodes.bassEQ.gain.value = params.eqBass;
     this.nodes.deepEQ.gain.value = params.eqDeep;
     this.nodes.midEQ.gain.value = params.eqMid;
@@ -175,8 +175,8 @@ export class AudioGraph {
     this.nodes.reverbGain.gain.value = params.reverb / 100;
     this.nodes.stereoPanner.pan.value = (params.stereoWidth - 100) / 100; // rough mapping
     this.nodes.limiter.threshold.value = params.limitCeiling;
-    // Master gain in dB to linear
-    this.nodes.masterGain.gain.value = Math.pow(10, params.gain / 20);
+    // Master gain in dB to linear multiplied by player volume setting
+    this.nodes.masterGain.gain.value = Math.pow(10, params.gain / 20) * volume;
   }
 
   applySunoBypass() {

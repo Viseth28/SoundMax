@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Play, Pause, Settings, X, Download, Sparkles, Video } from 'lucide-react';
+import { Upload, Play, Pause, Settings, X, Download, Sparkles, Video, SkipBack, SkipForward, Volume2, VolumeX, Repeat, Shuffle, Music } from 'lucide-react';
 import { AudioGraph, type AudioParameters, defaultParams, presets } from './audioEngine';
 import { encodeWAV } from './wavEncoder';
 import { encodeMP3 } from './mp3Encoder';
@@ -48,6 +48,17 @@ export default function App() {
   });
   const [videoProgress, setVideoProgress] = useState(0);
   const [isExportingVideo, setIsExportingVideo] = useState(false);
+
+  // Playback states
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentPlaybackTime, setCurrentPlaybackTime] = useState(0);
+  const [playbackVolume, setPlaybackVolume] = useState(() => {
+    const saved = localStorage.getItem('soundmax_volume');
+    return saved ? parseFloat(saved) : 1.0;
+  });
+  const [isMuted, setIsMuted] = useState(false);
+  const [isRepeat, setIsRepeat] = useState(false);
+  const [isShuffle, setIsShuffle] = useState(false);
 
   const handleVideoExport = async () => {
     if (!videoConfig.imageFile || files.length === 0) return;
@@ -143,6 +154,10 @@ export default function App() {
 
   const audioContextRef = useRef<AudioContext | null>(null);
   const audioGraphRef = useRef<AudioGraph | null>(null);
+  const playbackStartCtxTimeRef = useRef<number>(0);
+  const playbackOffsetRef = useRef<number>(0);
+  const isManualStopRef = useRef<boolean>(false);
+  const playbackTimerRef = useRef<any>(null);
 
   // Initialize Audio Context on first user interaction
   const initAudioContext = () => {
@@ -150,15 +165,19 @@ export default function App() {
       audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
       audioGraphRef.current = new AudioGraph(audioContextRef.current);
       setAnalyserNode(audioGraphRef.current.nodes.analyser);
-      audioGraphRef.current.applyParameters(params);
+      audioGraphRef.current.applyParameters(params, isMuted ? 0 : playbackVolume);
     }
   };
 
   useEffect(() => {
+    localStorage.setItem('soundmax_volume', playbackVolume.toString());
+  }, [playbackVolume]);
+
+  useEffect(() => {
     if (audioGraphRef.current) {
-      audioGraphRef.current.applyParameters(params);
+      audioGraphRef.current.applyParameters(params, isMuted ? 0 : playbackVolume);
     }
-  }, [params]);
+  }, [params, playbackVolume, isMuted]);
 
   const decodeAudioFile = async (file: File): Promise<AudioBuffer> => {
     initAudioContext();
@@ -204,29 +223,190 @@ export default function App() {
     await processFiles(Array.from(e.dataTransfer.files));
   };
 
+  const startPlaybackTimer = (id: string, duration: number) => {
+    if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
+    
+    playbackTimerRef.current = setInterval(() => {
+      if (!audioContextRef.current) return;
+      const elapsed = audioContextRef.current.currentTime - playbackStartCtxTimeRef.current;
+      let current = playbackOffsetRef.current + elapsed;
+      
+      if (current >= duration) {
+        current = duration;
+        clearInterval(playbackTimerRef.current);
+      }
+      
+      setCurrentPlaybackTime(current);
+    }, 100);
+  };
+
+  const playTrack = (id: string, offsetSeconds = 0) => {
+    initAudioContext();
+    const file = files.find(f => f.id === id);
+    if (!file || !file.buffer) return;
+
+    isManualStopRef.current = true;
+    audioGraphRef.current?.stop();
+    isManualStopRef.current = false;
+
+    audioGraphRef.current?.connectSource(file.buffer);
+
+    if (audioGraphRef.current?.source) {
+      audioGraphRef.current.source.onended = () => {
+        if (!isManualStopRef.current) {
+          handleNextTrack();
+        }
+      };
+    }
+
+    audioGraphRef.current?.start(0, offsetSeconds);
+
+    playbackStartCtxTimeRef.current = audioContextRef.current!.currentTime;
+    playbackOffsetRef.current = offsetSeconds;
+    
+    setPlayingId(id);
+    setIsPlaying(true);
+    setCurrentPlaybackTime(offsetSeconds);
+
+    startPlaybackTimer(id, file.buffer.duration);
+  };
+
+  const pauseTrack = () => {
+    if (!playingId) return;
+    
+    isManualStopRef.current = true;
+    audioGraphRef.current?.stop();
+    isManualStopRef.current = false;
+    
+    if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
+    
+    setIsPlaying(false);
+    
+    if (audioContextRef.current) {
+      const elapsed = audioContextRef.current.currentTime - playbackStartCtxTimeRef.current;
+      playbackOffsetRef.current = playbackOffsetRef.current + elapsed;
+      setCurrentPlaybackTime(playbackOffsetRef.current);
+    }
+  };
+
+  const resumeTrack = () => {
+    if (!playingId) return;
+    playTrack(playingId, playbackOffsetRef.current);
+  };
+
+  const seekTrack = (timeSeconds: number) => {
+    if (!playingId) return;
+    const file = files.find(f => f.id === playingId);
+    if (!file || !file.buffer) return;
+    
+    const clampedTime = Math.max(0, Math.min(timeSeconds, file.buffer.duration));
+    
+    if (isPlaying) {
+      playTrack(playingId, clampedTime);
+    } else {
+      playbackOffsetRef.current = clampedTime;
+      setCurrentPlaybackTime(clampedTime);
+    }
+  };
+
+  const handleNextTrack = () => {
+    if (files.length === 0) return;
+    
+    if (isRepeat && playingId) {
+      playTrack(playingId, 0);
+      return;
+    }
+    
+    const currentIndex = files.findIndex(f => f.id === playingId);
+    if (isShuffle) {
+      const playable = files.filter(f => f.buffer !== null);
+      if (playable.length > 0) {
+        let randomFile = playable[Math.floor(Math.random() * playable.length)];
+        if (playable.length > 1 && randomFile.id === playingId) {
+          const otherPlayable = playable.filter(f => f.id !== playingId);
+          randomFile = otherPlayable[Math.floor(Math.random() * otherPlayable.length)];
+        }
+        playTrack(randomFile.id, 0);
+      }
+    } else {
+      if (currentIndex === -1) {
+        const firstPlayable = files.find(f => f.buffer !== null);
+        if (firstPlayable) playTrack(firstPlayable.id, 0);
+      } else {
+        const nextIndex = (currentIndex + 1) % files.length;
+        const nextFile = files[nextIndex];
+        if (nextFile && nextFile.buffer) {
+          playTrack(nextFile.id, 0);
+        } else {
+          const decodedFile = files.slice(nextIndex).find(f => f.buffer !== null) || files.find(f => f.buffer !== null);
+          if (decodedFile) playTrack(decodedFile.id, 0);
+        }
+      }
+    }
+  };
+
+  const handlePrevTrack = () => {
+    if (files.length === 0) return;
+    
+    if (currentPlaybackTime > 3 && playingId) {
+      playTrack(playingId, 0);
+      return;
+    }
+
+    const currentIndex = files.findIndex(f => f.id === playingId);
+    if (currentIndex === -1) {
+      const firstPlayable = files.find(f => f.buffer !== null);
+      if (firstPlayable) playTrack(firstPlayable.id, 0);
+    } else {
+      const prevIndex = (currentIndex - 1 + files.length) % files.length;
+      const prevFile = files[prevIndex];
+      if (prevFile && prevFile.buffer) {
+        playTrack(prevFile.id, 0);
+      } else {
+        const decodedFile = files.slice(0, prevIndex + 1).reverse().find(f => f.buffer !== null) || files.find(f => f.buffer !== null);
+        if (decodedFile) playTrack(decodedFile.id, 0);
+      }
+    }
+  };
+
+  const formatTime = (secs: number) => {
+    if (isNaN(secs)) return '0:00';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  useEffect(() => {
+    return () => {
+      if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
+    };
+  }, []);
+
   const togglePlayback = (id: string) => {
     initAudioContext();
     const file = files.find(f => f.id === id);
     if (!file || !file.buffer) return;
 
     if (playingId === id) {
-      // Pause
-      audioGraphRef.current?.stop();
-      setPlayingId(null);
+      if (isPlaying) {
+        pauseTrack();
+      } else {
+        resumeTrack();
+      }
     } else {
-      // Stop current if any
-      audioGraphRef.current?.stop();
-      // Play new
-      audioGraphRef.current?.connectSource(file.buffer);
-      audioGraphRef.current?.start();
-      setPlayingId(id);
+      playTrack(id, 0);
     }
   };
 
   const removeFile = (id: string) => {
     if (playingId === id) {
+      isManualStopRef.current = true;
       audioGraphRef.current?.stop();
+      isManualStopRef.current = false;
+      if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
       setPlayingId(null);
+      setIsPlaying(false);
+      setCurrentPlaybackTime(0);
     }
     setFiles(prev => prev.filter(f => f.id !== id));
   };
@@ -406,7 +586,7 @@ export default function App() {
                       <td className="py-3 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button onClick={() => togglePlayback(f.id)} disabled={!f.buffer} title="Preview" className="p-2 bg-zinc-800 hover:bg-amber-600 rounded-full transition-colors disabled:opacity-50">
-                            {playingId === f.id ? <Pause size={14} className="text-white" /> : <Play size={14} className="text-white ml-0.5" />}
+                            {playingId === f.id && isPlaying ? <Pause size={14} className="text-white" /> : <Play size={14} className="text-white ml-0.5" />}
                           </button>
                           <button onClick={() => removeFile(f.id)} title="Remove" className="p-2 bg-zinc-800 hover:bg-red-500 rounded-full transition-colors opacity-50 hover:opacity-100 group-hover:opacity-100">
                             <X size={14} className="text-zinc-300 hover:text-white" />
@@ -722,6 +902,153 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Media Controller Bar */}
+      <div className="h-20 bg-zinc-900 border-t border-zinc-800 px-6 flex items-center justify-between shadow-2xl z-40 select-none">
+        {/* Left: Track Info */}
+        <div className="flex items-center gap-3 w-1/3 min-w-[240px]">
+          <div className="w-12 h-12 rounded bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-500 shadow-inner shrink-0 relative overflow-hidden group">
+            {exportConfig.coverImageFile && playingId ? (
+              <img src={URL.createObjectURL(exportConfig.coverImageFile)} className="w-full h-full object-cover" alt="Cover" />
+            ) : (
+              <Music size={20} className="text-zinc-400 group-hover:text-amber-500 transition-colors" />
+            )}
+          </div>
+          <div className="flex flex-col truncate">
+            <span className="text-sm font-semibold text-zinc-100 truncate">
+              {playingId ? (files.find(f => f.id === playingId)?.name || 'Unknown Track') : 'No Track Playing'}
+            </span>
+            <span className="text-xs text-zinc-400 truncate flex items-center gap-1">
+              {playingId ? (
+                <>
+                  {exportConfig.artistName || 'Unknown Artist'} 
+                  <span className="w-1 h-1 rounded-full bg-zinc-600"></span> 
+                  <span className="text-amber-500 font-bold uppercase text-[9px] tracking-wider bg-amber-500/10 px-1 rounded">{presetName}</span>
+                </>
+              ) : 'Select a track to play'}
+            </span>
+          </div>
+        </div>
+
+        {/* Center: Controls & Seek */}
+        <div className="flex flex-col items-center gap-1.5 flex-1 max-w-xl px-4">
+          {/* Controls */}
+          <div className="flex items-center gap-5">
+            <button 
+              onClick={() => setIsShuffle(!isShuffle)} 
+              className={`transition-colors p-1 rounded-full ${isShuffle ? 'text-amber-500 hover:text-amber-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+              title="Shuffle"
+            >
+              <Shuffle size={16} />
+            </button>
+
+            <button 
+              onClick={handlePrevTrack} 
+              disabled={files.length === 0} 
+              className="text-zinc-400 hover:text-white disabled:opacity-30 transition-colors p-1"
+              title="Previous Track"
+            >
+              <SkipBack size={20} />
+            </button>
+
+            <button 
+              onClick={() => playingId && togglePlayback(playingId)} 
+              disabled={!playingId} 
+              className="w-8 h-8 rounded-full bg-white text-zinc-950 flex items-center justify-center hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+              title={isPlaying ? 'Pause' : 'Play'}
+            >
+              {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} className="ml-0.5" fill="currentColor" />}
+            </button>
+
+            <button 
+              onClick={handleNextTrack} 
+              disabled={files.length === 0} 
+              className="text-zinc-400 hover:text-white disabled:opacity-30 transition-colors p-1"
+              title="Next Track"
+            >
+              <SkipForward size={20} />
+            </button>
+
+            <button 
+              onClick={() => setIsRepeat(!isRepeat)} 
+              className={`transition-colors p-1 rounded-full ${isRepeat ? 'text-amber-500 hover:text-amber-400' : 'text-zinc-500 hover:text-zinc-300'}`}
+              title="Repeat One"
+            >
+              <Repeat size={16} />
+            </button>
+          </div>
+
+          {/* Seekbar */}
+          <div className="flex items-center gap-3 w-full">
+            <span className="text-[10px] font-mono text-zinc-500 w-8 text-right">
+              {formatTime(currentPlaybackTime)}
+            </span>
+            <div className="flex-1 relative group flex items-center py-1.5">
+              <input 
+                type="range" 
+                min={0} 
+                max={playingId ? (files.find(f => f.id === playingId)?.duration || 1) : 1} 
+                step={0.1}
+                value={currentPlaybackTime}
+                onChange={(e) => seekTrack(parseFloat(e.target.value))}
+                className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer outline-none transition-all group-hover:h-1.5 focus:outline-none accent-amber-500"
+                style={{
+                  background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${
+                    playingId 
+                      ? (currentPlaybackTime / (files.find(f => f.id === playingId)?.duration || 1)) * 100 
+                      : 0
+                  }%, #27272a ${
+                    playingId 
+                      ? (currentPlaybackTime / (files.find(f => f.id === playingId)?.duration || 1)) * 100 
+                      : 0
+                  }%, #27272a 100%)`
+                }}
+              />
+            </div>
+            <span className="text-[10px] font-mono text-zinc-500 w-8">
+              {playingId ? formatTime(files.find(f => f.id === playingId)?.duration || 0) : '0:00'}
+            </span>
+          </div>
+        </div>
+
+        {/* Right: Volume & Format Info */}
+        <div className="flex items-center justify-end gap-4 w-1/3 min-w-[240px]">
+          <div className="hidden sm:flex items-center gap-1 bg-zinc-950/60 border border-zinc-800/80 px-2.5 py-1 rounded text-[10px] font-bold tracking-wider text-zinc-400 font-mono">
+            <Sparkles size={11} className="text-amber-500" />
+            {exportConfig.format}
+          </div>
+
+          <div className="flex items-center gap-2 w-32 group/vol">
+            <button 
+              onClick={() => setIsMuted(!isMuted)} 
+              className="text-zinc-400 hover:text-white transition-colors"
+              title={isMuted ? 'Unmute' : 'Mute'}
+            >
+              {isMuted || playbackVolume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            </button>
+            <input 
+              type="range" 
+              min={0} 
+              max={1} 
+              step={0.01}
+              value={isMuted ? 0 : playbackVolume}
+              onChange={(e) => {
+                const v = parseFloat(e.target.value);
+                setPlaybackVolume(v);
+                if (isMuted && v > 0) setIsMuted(false);
+              }}
+              className="w-full h-1 bg-zinc-800 rounded-lg appearance-none cursor-pointer outline-none group-hover/vol:h-1.5 focus:outline-none accent-amber-500"
+              style={{
+                background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${
+                  (isMuted ? 0 : playbackVolume) * 100
+                }%, #27272a ${
+                  (isMuted ? 0 : playbackVolume) * 100
+                }%, #27272a 100%)`
+              }}
+            />
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
