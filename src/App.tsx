@@ -223,7 +223,7 @@ export default function App() {
     await processFiles(Array.from(e.dataTransfer.files));
   };
 
-  const startPlaybackTimer = (id: string, duration: number) => {
+  const startPlaybackTimer = (duration: number) => {
     if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
     
     playbackTimerRef.current = setInterval(() => {
@@ -268,7 +268,7 @@ export default function App() {
     setIsPlaying(true);
     setCurrentPlaybackTime(offsetSeconds);
 
-    startPlaybackTimer(id, file.buffer.duration);
+    startPlaybackTimer(file.buffer.duration);
   };
 
   const pauseTrack = () => {
