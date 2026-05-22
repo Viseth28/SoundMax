@@ -84,6 +84,21 @@ async function encodeWithWebCodecs(
   const totalVideoFrames = Math.ceil(duration * FPS);
   const AUDIO_CHUNK_FRAMES = 8192;
 
+  // ---- Apply a master gain boost (6 dB) to the export buffer ----
+  const gainDb = 6;
+  const gainFactor = Math.pow(10, gainDb / 20);
+  const offlineCtx = new OfflineAudioContext(numChannels, audioBuffer.length, sampleRate);
+  const source = offlineCtx.createBufferSource();
+  source.buffer = audioBuffer;
+  const gainNode = offlineCtx.createGain();
+  gainNode.gain.value = gainFactor;
+  source.connect(gainNode).connect(offlineCtx.destination);
+  source.start();
+  const boostedBuffer = await offlineCtx.startRendering();
+  // Use boostedBuffer for encoding
+  const processedAudioBuffer = boostedBuffer;
+
+
   // Draw image to offscreen canvas (centered, letterboxed)
   const img = await createImageBitmap(imageFile);
   const canvas = new OffscreenCanvas(OUTPUT_WIDTH, OUTPUT_HEIGHT);
@@ -175,9 +190,11 @@ async function encodeWithWebCodecs(
   if (videoError) throw videoError;
 
   // ── Encode audio chunks ──
+  // Use the boosted buffer for the rest of the encoding pipeline
+  const exportAudioBuffer = processedAudioBuffer;
   const channelData: Float32Array[] = [];
-  for (let c = 0; c < numChannels; c++) channelData.push(audioBuffer.getChannelData(c));
-  const totalSamples = audioBuffer.length;
+  for (let c = 0; c < numChannels; c++) channelData.push(exportAudioBuffer.getChannelData(c));
+  const totalSamples = exportAudioBuffer.length;
   let processed = 0;
 
   while (processed < totalSamples) {
