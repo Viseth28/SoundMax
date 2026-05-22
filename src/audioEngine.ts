@@ -27,7 +27,7 @@ export const defaultParams: AudioParameters = {
   echo: 0,
   reverb: 0,
   stereoWidth: 100,
-  gain: 6
+  gain: 2 // 🚀 Gentle 2dB default boost to prevent clipping & muddy saturation distortion
 };
 
 export const presets: Record<string, AudioParameters> = {
@@ -132,19 +132,26 @@ export class AudioGraph {
     midEQ.Q.value = 1;
 
     // ── 120Hz Linkwitz-Riley Crossover Network ──
+    // Setting Q to 0.7071 (Butterworth coefficient) is mathematically required for the cascaded 
+    // lowpass/highpass pairs to form a true 4th-order Linkwitz-Riley filter. This guarantees 
+    // a perfectly flat amplitude response (0 dB ripple) across the entire crossover region.
     const lowpass1 = this.ctx.createBiquadFilter();
     lowpass1.type = 'lowpass';
     lowpass1.frequency.value = 120;
+    lowpass1.Q.value = 0.7071;
     const lowpass2 = this.ctx.createBiquadFilter();
     lowpass2.type = 'lowpass';
     lowpass2.frequency.value = 120;
+    lowpass2.Q.value = 0.7071;
 
     const highpass1 = this.ctx.createBiquadFilter();
     highpass1.type = 'highpass';
     highpass1.frequency.value = 120;
+    highpass1.Q.value = 0.7071;
     const highpass2 = this.ctx.createBiquadFilter();
     highpass2.type = 'highpass';
     highpass2.frequency.value = 120;
+    highpass2.Q.value = 0.7071;
 
     // Low-Mono Consolidation Route
     const lowSplitter = this.ctx.createChannelSplitter(2);
