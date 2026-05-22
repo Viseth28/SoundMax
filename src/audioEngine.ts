@@ -23,7 +23,7 @@ export const defaultParams: AudioParameters = {
   echo: 0,
   reverb: 0,
   stereoWidth: 100,
-  gain: 0
+  gain: 6
 };
 
 export const presets: Record<string, AudioParameters> = {

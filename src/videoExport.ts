@@ -77,7 +77,7 @@ async function encodeWithWebCodecs(
 ): Promise<Blob> {
   const OUTPUT_WIDTH = 1920;
   const OUTPUT_HEIGHT = 1080;
-  const FPS = 30;             // YouTube standard frame rate
+  const FPS = 24;             // Changed to 24 FPS (Cinema standard, faster render)
   const sampleRate = audioBuffer.sampleRate;
   const numChannels = Math.min(audioBuffer.numberOfChannels, 2);
   const duration = audioBuffer.duration;
@@ -94,6 +94,9 @@ async function encodeWithWebCodecs(
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT);
   ctx.drawImage(img, Math.round((OUTPUT_WIDTH - scaledW) / 2), Math.round((OUTPUT_HEIGHT - scaledH) / 2), scaledW, scaledH);
+
+  // Capture the final canvas frame once into GPU-friendly memory
+  const preRenderedImage = await createImageBitmap(canvas);
 
   // Setup muxer
   const target = new ArrayBufferTarget();
@@ -113,12 +116,13 @@ async function encodeWithWebCodecs(
     error: (e) => { videoError = e; },
   });
   videoEncoder.configure({
-    codec: 'avc1.4d002a',        // H.264 Main Profile 4.2
+    codec: 'avc1.4d002a',        
     width: OUTPUT_WIDTH,
     height: OUTPUT_HEIGHT,
-    bitrate: 8_000_000,          // 8 Mbps — YouTube recommended for 1080p
+    bitrate: 4_000_000,          
     framerate: FPS,
     hardwareAcceleration: 'prefer-hardware',
+    latencyMode: 'quality',      // 🚀 Tells the GPU this is an offline render, not a live stream
     avc: { format: 'avc' },
   });
 
@@ -131,37 +135,40 @@ async function encodeWithWebCodecs(
     codec: 'mp4a.40.2',          // AAC-LC
     numberOfChannels: numChannels,
     sampleRate,
-    bitrate: 192_000,            // 192 kbps — max AAC bitrate supported by Web Codecs AudioEncoder
-                                  // (supported values: 96k, 128k, 160k, 192k)
+    bitrate: 192_000,            // 192 kbps
   });
 
-  // Backpressure: wait until encoder queue drains below limit
-  const waitForDrain = async (encoder: VideoEncoder | AudioEncoder, limit = 10) => {
-    while (encoder.encodeQueueSize > limit) {
-      if (videoError) throw videoError;
-      if (audioError) throw audioError;
-      await new Promise(r => setTimeout(r, 5));
+  // Backpressure queue
+// 🚀 Change limit from 20 to 120
+  const waitForDrain = async (encoder: VideoEncoder | AudioEncoder, limit = 120) => {
+    if (encoder.encodeQueueSize > limit) {
+      while (encoder.encodeQueueSize > limit) {
+        if (videoError) throw videoError;
+        if (audioError) throw audioError;
+        // Yield to let the GPU catch up
+        await new Promise(r => setTimeout(r, 1)); 
+      }
     }
   };
 
-  // ── Encode video frames at 30fps ──
-  // H.264 uses inter-frame prediction: after the first keyframe,
-  // P-frames store only pixel *differences*. Since the image never changes,
-  // P-frames are near-empty, so 30fps is almost as fast as 1fps to encode.
+  // ── Encode video frames at 24fps ──
   const frameDurationUs = Math.round(1_000_000 / FPS);
   for (let i = 0; i < totalVideoFrames; i++) {
-    // Backpressure: don't flood the encoder queue
     await waitForDrain(videoEncoder);
     if (videoError) throw videoError;
 
-    const frame = new VideoFrame(canvas, {
+    // Pass the pre-rendered ImageBitmap instead of the Canvas
+    const frame = new VideoFrame(preRenderedImage, {
       timestamp: i * frameDurationUs,
       duration: frameDurationUs,
     });
-    videoEncoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 }); // keyframe every 2s
+    videoEncoder.encode(frame, { keyFrame: i % (FPS * 2) === 0 });
     frame.close();
-    onProgress(Math.round((i / totalVideoFrames) * 50)); // 0–50%
-    if (i % 30 === 0) await new Promise(r => setTimeout(r, 0)); // yield to UI
+    
+    // Throttle UI updates
+    if (i % 48 === 0) { // Changed to 48 (2 seconds of frames at 24fps)
+      onProgress(Math.round((i / totalVideoFrames) * 50)); // 0–50%
+    }
   }
 
   await videoEncoder.flush();
@@ -177,12 +184,10 @@ async function encodeWithWebCodecs(
     const chunkSize = Math.min(AUDIO_CHUNK_FRAMES, totalSamples - processed);
     const timestamp = Math.round((processed / sampleRate) * 1_000_000);
 
-    // Backpressure: drain audio encoder queue
     await waitForDrain(audioEncoder);
     if (audioError) throw audioError;
-    if (audioEncoder.state === 'closed') throw new Error('Audio encoder closed unexpectedly. Try a shorter track or reload.');
+    if (audioEncoder.state === 'closed') throw new Error('Audio encoder closed unexpectedly.');
 
-    // Planar float32: [ch0_samples..., ch1_samples...]
     const planar = new Float32Array(numChannels * chunkSize);
     for (let c = 0; c < numChannels; c++) {
       planar.set(channelData[c].subarray(processed, processed + chunkSize), c * chunkSize);
@@ -200,12 +205,18 @@ async function encodeWithWebCodecs(
     audioData.close();
 
     processed += chunkSize;
-    onProgress(50 + Math.round((processed / totalSamples) * 45)); // 50–95%
+    
+    if (Math.round(processed / AUDIO_CHUNK_FRAMES) % 10 === 0) {
+      onProgress(50 + Math.round((processed / totalSamples) * 45)); // 50–95%
+    }
   }
 
   await videoEncoder.flush();
   await audioEncoder.flush();
   muxer.finalize();
+
+  // Clean up GPU memory
+  preRenderedImage.close();
 
   onProgress(100);
   return new Blob([target.buffer], { type: 'video/mp4' });
@@ -229,13 +240,13 @@ async function encodeWithFFmpeg(
   const stopTimer = startProgressTimer(duration, onProgress);
   try {
     await ff.exec([
-      '-loop', '1', '-framerate', '30', '-i', imgName,
+      '-loop', '1', '-framerate', '24', '-i', imgName, // Changed to 24
       '-i', 'audio.wav',
       '-t', String(duration),
       '-threads', '0',
       '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'stillimage',
-      '-b:v', '8000k',           // 8 Mbps video
-      '-c:a', 'aac', '-b:a', '320k',  // 320 kbps audio
+      '-b:v', '8000k',           
+      '-c:a', 'aac', '-b:a', '320k',  
       '-pix_fmt', 'yuv420p',
       '-vf', 'scale=1920:1080:force_original_aspect_ratio=decrease,pad=1920:1080:(ow-iw)/2:(oh-ih)/2,setsar=1',
       '-movflags', '+faststart',
@@ -315,7 +326,7 @@ export async function exportAlbumVideo(
   const stopTimer = startProgressTimer(totalDuration, onProgress);
   try {
     await ff.exec([
-      '-loop', '1', '-framerate', '30', '-i', imgName,
+      '-loop', '1', '-framerate', '24', '-i', imgName, // Changed to 24
       '-f', 'concat', '-safe', '0', '-i', 'concat.txt',
       '-t', String(totalDuration),
       '-threads', '0',
