@@ -465,9 +465,15 @@ export async function exportIndividualVideo(
   imageFile: File,
   renderedBuffer: AudioBuffer,
   audioBlob: Blob,
-  options: VideoExportOptions,
   onProgress: (pct: number, status?: string) => void
 ): Promise<Blob> {
+  const options: VideoExportOptions = {
+    fps: 24,
+    quality: 'high',
+    resolution: '1080p',
+    audioBitrate: 320000
+  };
+
   if (isWebCodecsSupported()) {
     try {
       return await encodeWithWebCodecs(imageFile, renderedBuffer, options, onProgress);
@@ -485,9 +491,15 @@ export async function exportAlbumVideo(
   imageFile: File,
   renderedBuffers: AudioBuffer[],
   audioBlobs: Blob[],
-  options: VideoExportOptions,
   onProgress: (pct: number, status?: string) => void
 ): Promise<Blob> {
+  const options: VideoExportOptions = {
+    fps: 24,
+    quality: 'high',
+    resolution: '1080p',
+    audioBitrate: 320000
+  };
+
   if (isWebCodecsSupported()) {
     try {
       const sampleRate = renderedBuffers[0].sampleRate;

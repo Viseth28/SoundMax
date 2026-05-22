@@ -45,10 +45,6 @@ export default function App() {
   const [videoConfig, setVideoConfig] = useState({
     imageFile: null as File | null,
     mode: 'individual' as 'individual' | 'album',
-    fps: 24,
-    quality: 'high' as 'low' | 'medium' | 'high' | 'ultra',
-    resolution: '1080p' as '720p' | '1080p' | '1440p' | '4k',
-    audioBitrate: 192000
   });
   const [videoProgress, setVideoProgress] = useState(0);
   const [isExportingVideo, setIsExportingVideo] = useState(false);
@@ -88,12 +84,6 @@ export default function App() {
           
           const videoBlob = await exportIndividualVideo(
             videoConfig.imageFile, renderedBuffer, audioBlob,
-            {
-              fps: videoConfig.fps,
-              quality: videoConfig.quality,
-              resolution: videoConfig.resolution,
-              audioBitrate: videoConfig.audioBitrate
-            },
             (pct, status) => {
               setVideoProgress(pct);
               if (status) setVideoExportStatus(status);
@@ -134,12 +124,6 @@ export default function App() {
         
         const videoBlob = await exportAlbumVideo(
           videoConfig.imageFile, renderedBuffers, audioBlobs,
-          {
-            fps: videoConfig.fps,
-            quality: videoConfig.quality,
-            resolution: videoConfig.resolution,
-            audioBitrate: videoConfig.audioBitrate
-          },
           (pct, status) => {
             setVideoProgress(pct);
             if (status) setVideoExportStatus(status);
@@ -926,67 +910,6 @@ export default function App() {
                     <div className="font-bold mb-1">Full Album Video</div>
                     <div className="text-[10px] opacity-80 leading-tight">1 massive MP4 file with all tracks</div>
                   </button>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-1">Resolution</label>
-                  <select 
-                    value={videoConfig.resolution}
-                    onChange={e => setVideoConfig({...videoConfig, resolution: e.target.value as any})}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 outline-none focus:border-amber-500"
-                  >
-                    <option value="720p">720p (HD)</option>
-                    <option value="1080p">1080p (Full HD)</option>
-                    <option value="1440p">1440p (QHD 2K)</option>
-                    <option value="4k">2160p (4K UHD)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-1">Frame Rate (FPS)</label>
-                  <select 
-                    value={videoConfig.fps}
-                    onChange={e => setVideoConfig({...videoConfig, fps: parseInt(e.target.value)})}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 outline-none focus:border-amber-500"
-                  >
-                    <option value={1}>1 FPS (Still/Slideshow)</option>
-                    <option value={15}>15 FPS (Eco)</option>
-                    <option value={24}>24 FPS (Cinema)</option>
-                    <option value={30}>30 FPS (Standard)</option>
-                    <option value={60}>60 FPS (Ultra Smooth)</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-1">Video Quality</label>
-                  <select 
-                    value={videoConfig.quality}
-                    onChange={e => setVideoConfig({...videoConfig, quality: e.target.value as any})}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 outline-none focus:border-amber-500"
-                  >
-                    <option value="low">Low (Small File)</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High (Recommended)</option>
-                    <option value="ultra">Ultra (High Bitrate)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-zinc-400 mb-1">Audio Quality</label>
-                  <select 
-                    value={videoConfig.audioBitrate}
-                    onChange={e => setVideoConfig({...videoConfig, audioBitrate: parseInt(e.target.value)})}
-                    className="w-full bg-zinc-950 border border-zinc-800 rounded p-2 text-sm text-zinc-200 outline-none focus:border-amber-500"
-                  >
-                    <option value={128000}>128 kbps (Standard)</option>
-                    <option value={192000}>192 kbps (High)</option>
-                    <option value={256000}>256 kbps (Pro)</option>
-                    <option value={320000}>320 kbps (Mastering Grade)</option>
-                  </select>
                 </div>
               </div>
 
