@@ -192,11 +192,19 @@ export default function App() {
         const qFile: QueuedFile = {
           id, file, name: file.name, duration: 0, type: file.type, status: 'Idle', buffer: null
         };
-        setFiles(prev => [...prev, qFile]);
+        setFiles(prev => {
+          const updated = [...prev, qFile];
+          filesRef.current = updated;
+          return updated;
+        });
         
         // Decode in background
         const buffer = await decodeAudioFile(file);
-        setFiles(prev => prev.map(f => f.id === id ? { ...f, duration: buffer.duration, buffer } : f));
+        setFiles(prev => {
+          const updated = prev.map(f => f.id === id ? { ...f, duration: buffer.duration, buffer } : f);
+          filesRef.current = updated;
+          return updated;
+        });
       }
     }
   };
@@ -223,6 +231,19 @@ export default function App() {
     await processFiles(Array.from(e.dataTransfer.files));
   };
 
+  // Ref Synchronization
+  const filesRef = useRef(files);
+  const playingIdRef = useRef(playingId);
+  const isPlayingRef = useRef(isPlaying);
+  const isRepeatRef = useRef(isRepeat);
+  const isShuffleRef = useRef(isShuffle);
+
+  useEffect(() => { filesRef.current = files; }, [files]);
+  useEffect(() => { playingIdRef.current = playingId; }, [playingId]);
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
+  useEffect(() => { isRepeatRef.current = isRepeat; }, [isRepeat]);
+  useEffect(() => { isShuffleRef.current = isShuffle; }, [isShuffle]);
+
   const startPlaybackTimer = (duration: number) => {
     if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
     
@@ -242,18 +263,28 @@ export default function App() {
 
   const playTrack = (id: string, offsetSeconds = 0) => {
     initAudioContext();
-    const file = files.find(f => f.id === id);
+    if (audioContextRef.current && audioContextRef.current.state === 'suspended') {
+      audioContextRef.current.resume();
+    }
+
+    const currentFiles = filesRef.current;
+    const file = currentFiles.find(f => f.id === id);
     if (!file || !file.buffer) return;
 
     isManualStopRef.current = true;
+    if (audioGraphRef.current?.source) {
+      audioGraphRef.current.source.onended = null; // Clear old ended handler
+    }
     audioGraphRef.current?.stop();
     isManualStopRef.current = false;
 
     audioGraphRef.current?.connectSource(file.buffer);
 
-    if (audioGraphRef.current?.source) {
-      audioGraphRef.current.source.onended = () => {
-        if (!isManualStopRef.current) {
+    const currentSource = audioGraphRef.current?.source;
+    if (currentSource) {
+      currentSource.onended = () => {
+        // Double-check: only transition if this is still the active source and it ended naturally while playing
+        if (audioGraphRef.current?.source === currentSource && isPlayingRef.current) {
           handleNextTrack();
         }
       };
@@ -265,7 +296,9 @@ export default function App() {
     playbackOffsetRef.current = offsetSeconds;
     
     setPlayingId(id);
+    playingIdRef.current = id;
     setIsPlaying(true);
+    isPlayingRef.current = true;
     setCurrentPlaybackTime(offsetSeconds);
 
     startPlaybackTimer(file.buffer.duration);
@@ -275,12 +308,16 @@ export default function App() {
     if (!playingId) return;
     
     isManualStopRef.current = true;
+    if (audioGraphRef.current?.source) {
+      audioGraphRef.current.source.onended = null;
+    }
     audioGraphRef.current?.stop();
     isManualStopRef.current = false;
     
     if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
     
     setIsPlaying(false);
+    isPlayingRef.current = false;
     
     if (audioContextRef.current) {
       const elapsed = audioContextRef.current.currentTime - playbackStartCtxTimeRef.current;
@@ -310,35 +347,38 @@ export default function App() {
   };
 
   const handleNextTrack = () => {
-    if (files.length === 0) return;
+    const currentFiles = filesRef.current;
+    const currentPlayingId = playingIdRef.current;
     
-    if (isRepeat && playingId) {
-      playTrack(playingId, 0);
+    if (currentFiles.length === 0) return;
+    
+    if (isRepeatRef.current && currentPlayingId) {
+      playTrack(currentPlayingId, 0);
       return;
     }
     
-    const currentIndex = files.findIndex(f => f.id === playingId);
-    if (isShuffle) {
-      const playable = files.filter(f => f.buffer !== null);
+    const currentIndex = currentFiles.findIndex(f => f.id === currentPlayingId);
+    if (isShuffleRef.current) {
+      const playable = currentFiles.filter(f => f.buffer !== null);
       if (playable.length > 0) {
         let randomFile = playable[Math.floor(Math.random() * playable.length)];
-        if (playable.length > 1 && randomFile.id === playingId) {
-          const otherPlayable = playable.filter(f => f.id !== playingId);
+        if (playable.length > 1 && randomFile.id === currentPlayingId) {
+          const otherPlayable = playable.filter(f => f.id !== currentPlayingId);
           randomFile = otherPlayable[Math.floor(Math.random() * otherPlayable.length)];
         }
         playTrack(randomFile.id, 0);
       }
     } else {
       if (currentIndex === -1) {
-        const firstPlayable = files.find(f => f.buffer !== null);
+        const firstPlayable = currentFiles.find(f => f.buffer !== null);
         if (firstPlayable) playTrack(firstPlayable.id, 0);
       } else {
-        const nextIndex = (currentIndex + 1) % files.length;
-        const nextFile = files[nextIndex];
+        const nextIndex = (currentIndex + 1) % currentFiles.length;
+        const nextFile = currentFiles[nextIndex];
         if (nextFile && nextFile.buffer) {
           playTrack(nextFile.id, 0);
         } else {
-          const decodedFile = files.slice(nextIndex).find(f => f.buffer !== null) || files.find(f => f.buffer !== null);
+          const decodedFile = currentFiles.slice(nextIndex).find(f => f.buffer !== null) || currentFiles.find(f => f.buffer !== null);
           if (decodedFile) playTrack(decodedFile.id, 0);
         }
       }
@@ -346,24 +386,27 @@ export default function App() {
   };
 
   const handlePrevTrack = () => {
-    if (files.length === 0) return;
+    const currentFiles = filesRef.current;
+    const currentPlayingId = playingIdRef.current;
     
-    if (currentPlaybackTime > 3 && playingId) {
-      playTrack(playingId, 0);
+    if (currentFiles.length === 0) return;
+    
+    if (currentPlaybackTime > 3 && currentPlayingId) {
+      playTrack(currentPlayingId, 0);
       return;
     }
 
-    const currentIndex = files.findIndex(f => f.id === playingId);
+    const currentIndex = currentFiles.findIndex(f => f.id === currentPlayingId);
     if (currentIndex === -1) {
-      const firstPlayable = files.find(f => f.buffer !== null);
+      const firstPlayable = currentFiles.find(f => f.buffer !== null);
       if (firstPlayable) playTrack(firstPlayable.id, 0);
     } else {
-      const prevIndex = (currentIndex - 1 + files.length) % files.length;
-      const prevFile = files[prevIndex];
+      const prevIndex = (currentIndex - 1 + currentFiles.length) % currentFiles.length;
+      const prevFile = currentFiles[prevIndex];
       if (prevFile && prevFile.buffer) {
         playTrack(prevFile.id, 0);
       } else {
-        const decodedFile = files.slice(0, prevIndex + 1).reverse().find(f => f.buffer !== null) || files.find(f => f.buffer !== null);
+        const decodedFile = currentFiles.slice(0, prevIndex + 1).reverse().find(f => f.buffer !== null) || currentFiles.find(f => f.buffer !== null);
         if (decodedFile) playTrack(decodedFile.id, 0);
       }
     }
@@ -384,11 +427,13 @@ export default function App() {
 
   const togglePlayback = (id: string) => {
     initAudioContext();
-    const file = files.find(f => f.id === id);
+    const currentFiles = filesRef.current;
+    const file = currentFiles.find(f => f.id === id);
     if (!file || !file.buffer) return;
 
-    if (playingId === id) {
-      if (isPlaying) {
+    const currentPlayingId = playingIdRef.current;
+    if (currentPlayingId === id) {
+      if (isPlayingRef.current) {
         pauseTrack();
       } else {
         resumeTrack();
@@ -401,14 +446,23 @@ export default function App() {
   const removeFile = (id: string) => {
     if (playingId === id) {
       isManualStopRef.current = true;
+      if (audioGraphRef.current?.source) {
+        audioGraphRef.current.source.onended = null;
+      }
       audioGraphRef.current?.stop();
       isManualStopRef.current = false;
       if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
       setPlayingId(null);
+      playingIdRef.current = null;
       setIsPlaying(false);
+      isPlayingRef.current = false;
       setCurrentPlaybackTime(0);
     }
-    setFiles(prev => prev.filter(f => f.id !== id));
+    setFiles(prev => {
+      const updated = prev.filter(f => f.id !== id);
+      filesRef.current = updated;
+      return updated;
+    });
   };
 
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>, key: keyof AudioParameters) => {
@@ -568,8 +622,17 @@ export default function App() {
                 </thead>
                 <tbody>
                   {files.map(f => (
-                    <tr key={f.id} className="border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors group">
-                      <td className="py-3 text-zinc-200 truncate max-w-[200px]">{f.name}</td>
+                    <tr 
+                      key={f.id} 
+                      className={`border-b border-zinc-800/50 hover:bg-zinc-800/30 transition-colors group cursor-pointer ${playingId === f.id ? 'bg-amber-500/5' : ''}`}
+                      onClick={() => f.buffer && togglePlayback(f.id)}
+                    >
+                      <td className="py-3 text-zinc-200 truncate max-w-[200px] font-medium flex items-center gap-2">
+                        {playingId === f.id && isPlaying ? (
+                          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse shrink-0"></span>
+                        ) : null}
+                        {f.name}
+                      </td>
                       <td className="py-3 text-zinc-400">
                         {f.duration ? `${Math.floor(f.duration / 60)}:${Math.floor(f.duration % 60).toString().padStart(2, '0')}` : '--'}
                       </td>
@@ -583,11 +646,8 @@ export default function App() {
                           {f.status}
                         </span>
                       </td>
-                      <td className="py-3 text-right">
+                      <td className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => togglePlayback(f.id)} disabled={!f.buffer} title="Preview" className="p-2 bg-zinc-800 hover:bg-amber-600 rounded-full transition-colors disabled:opacity-50">
-                            {playingId === f.id && isPlaying ? <Pause size={14} className="text-white" /> : <Play size={14} className="text-white ml-0.5" />}
-                          </button>
                           <button onClick={() => removeFile(f.id)} title="Remove" className="p-2 bg-zinc-800 hover:bg-red-500 rounded-full transition-colors opacity-50 hover:opacity-100 group-hover:opacity-100">
                             <X size={14} className="text-zinc-300 hover:text-white" />
                           </button>
