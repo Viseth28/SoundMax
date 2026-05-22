@@ -471,7 +471,7 @@ export async function exportIndividualVideo(
     fps: 24,
     quality: 'high',
     resolution: '1080p',
-    audioBitrate: 320000
+    audioBitrate: 192000
   };
 
   if (isWebCodecsSupported()) {
@@ -497,7 +497,7 @@ export async function exportAlbumVideo(
     fps: 24,
     quality: 'high',
     resolution: '1080p',
-    audioBitrate: 320000
+    audioBitrate: 192000
   };
 
   if (isWebCodecsSupported()) {
