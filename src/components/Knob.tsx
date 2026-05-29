@@ -26,6 +26,7 @@ export default function Knob({
   const knobRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
   const dragStartY = useRef(0);
   const dragStartValue = useRef(0);
 
@@ -184,7 +185,24 @@ export default function Knob({
   const strokeDashoffset = arcLength - percentage * arcLength;
 
   return (
-    <div className="flex flex-col items-center select-none group w-24">
+    <div 
+      className="relative flex flex-col items-center select-none group w-24"
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      {/* Hover Tooltip */}
+      {isHovered && (
+        <div 
+          className="absolute -top-10 z-50 px-2 py-1 text-[10px] font-bold font-mono rounded border backdrop-blur-md bg-zinc-950/90 text-zinc-100 shadow-[0_4px_12px_rgba(0,0,0,0.5)] pointer-events-none whitespace-nowrap transition-all duration-150 animate-in fade-in slide-in-from-bottom-2"
+          style={{ 
+            borderColor: selectedColor.stroke, 
+            boxShadow: `0 0 8px ${selectedColor.glow}` 
+          }}
+        >
+          {label}: {value > 0 ? '+' : ''}{value}{unit}
+        </div>
+      )}
+
       {/* Label */}
       <span className="text-[10px] text-zinc-400 font-extrabold tracking-widest uppercase mb-1 transition-all group-hover:text-[#ff6b00] group-hover:scale-105 duration-200">
         {label}

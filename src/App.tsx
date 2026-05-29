@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Play, Pause, Settings, X, Download, Sparkles, Video, Volume2, VolumeX, Music } from 'lucide-react';
+import { Upload, Play, Pause, Settings, X, Download, Sparkles, Video, Volume2, VolumeX, Music, RotateCcw, Power, ChevronDown } from 'lucide-react';
 import { AudioGraph, type AudioParameters, defaultParams, presets } from './audioEngine';
 import { encodeWAV } from './wavEncoder';
 import { encodeMP3 } from './mp3Encoder';
@@ -26,6 +26,28 @@ export default function App() {
   const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
   const [showExportModal, setShowExportModal] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+
+  // Custom states for bypasses, preset selector & section resets
+  const [bypassState, setBypassState] = useState({
+    eq: false,
+    dynamics: false,
+    color: false,
+    space: false,
+  });
+  const [presetOpen, setPresetOpen] = useState(false);
+  const savedParamsRef = useRef<AudioParameters>({ ...defaultParams });
+  const presetRef = useRef<HTMLDivElement>(null);
+
+  // Click-outside listener for Preset Select Dropdown
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (presetRef.current && !presetRef.current.contains(event.target as Node)) {
+        setPresetOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
   const [exportConfig, setExportConfig] = useState({
     format: 'WAV 16-bit',
     sampleRate: 44100,
@@ -439,16 +461,55 @@ export default function App() {
     });
   };
 
+  const SECTION_PARAMS = {
+    eq: ['eqBass', 'eqDeep', 'eqMid'] as const,
+    dynamics: ['compThreshold', 'compRatio', 'limitCeiling'] as const,
+    color: ['saturation'] as const,
+    space: ['stereoWidth', 'reverb', 'echo'] as const,
+  };
+
   const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>, key: keyof AudioParameters) => {
-    setParams(prev => ({ ...prev, [key]: parseFloat(e.target.value) }));
+    const val = parseFloat(e.target.value);
+    setParams(prev => ({ ...prev, [key]: val }));
+    
+    // Also save the change to savedParamsRef if that section is not bypassed
+    Object.entries(SECTION_PARAMS).forEach(([sec, keys]) => {
+      if ((keys as readonly string[]).includes(key)) {
+        const isBypassed = bypassState[sec as keyof typeof bypassState];
+        if (!isBypassed) {
+          savedParamsRef.current[key] = val as any;
+        }
+      }
+    });
+    // Master gain is never bypassed, save it directly
+    if (key === 'gain') {
+      savedParamsRef.current.gain = val;
+    }
+    
     setPresetName("Custom");
   };
 
-  const handlePresetChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const name = e.target.value;
+  const handlePresetSelect = (name: string) => {
     setPresetName(name);
     if (presets[name]) {
-      setParams(presets[name]);
+      const newPreset = presets[name];
+      savedParamsRef.current = { ...newPreset };
+      
+      setParams(prev => {
+        const next = { ...prev };
+        Object.entries(SECTION_PARAMS).forEach(([sec, keys]) => {
+          const isBypassed = bypassState[sec as keyof typeof bypassState];
+          keys.forEach(k => {
+            if (!isBypassed) {
+              next[k] = newPreset[k] as any;
+            } else {
+              next[k] = defaultParams[k] as any;
+            }
+          });
+        });
+        next.gain = newPreset.gain;
+        return next;
+      });
     }
   };
 
@@ -465,8 +526,71 @@ export default function App() {
     }
 
     const optimalParams = calculateAutoMaster(activeFile.buffer);
-    setParams(optimalParams);
+    savedParamsRef.current = { ...optimalParams };
+    
+    setParams(prev => {
+      const next = { ...prev };
+      Object.entries(SECTION_PARAMS).forEach(([sec, keys]) => {
+        const isBypassed = bypassState[sec as keyof typeof bypassState];
+        keys.forEach(k => {
+          if (!isBypassed) {
+            next[k] = optimalParams[k] as any;
+          } else {
+            next[k] = defaultParams[k] as any;
+          }
+        });
+      });
+      next.gain = optimalParams.gain;
+      return next;
+    });
     setPresetName("AI Mastered");
+  };
+
+  const toggleBypass = (sec: keyof typeof SECTION_PARAMS) => {
+    setBypassState(prev => {
+      const isBypassing = !prev[sec];
+      
+      setParams(currentParams => {
+        const nextParams = { ...currentParams };
+        const paramKeys = SECTION_PARAMS[sec];
+        
+        if (isBypassing) {
+          // Save current values to savedRef
+          paramKeys.forEach(k => {
+            savedParamsRef.current[k] = currentParams[k] as any;
+            // Set params in audioEngine to their clean default values
+            nextParams[k] = defaultParams[k] as any;
+          });
+        } else {
+          // Restore from savedRef
+          paramKeys.forEach(k => {
+            nextParams[k] = savedParamsRef.current[k] as any;
+          });
+        }
+        return nextParams;
+      });
+
+      return { ...prev, [sec]: isBypassing };
+    });
+  };
+
+  const resetSection = (sec: keyof typeof SECTION_PARAMS | 'master') => {
+    if (sec === 'master') {
+      setParams(prev => ({ ...prev, gain: defaultParams.gain }));
+      savedParamsRef.current.gain = defaultParams.gain;
+    } else {
+      const paramKeys = SECTION_PARAMS[sec];
+      setParams(prev => {
+        const next = { ...prev };
+        paramKeys.forEach(k => {
+          // If bypassed, keep it at default in params; if active, update it to default
+          next[k] = defaultParams[k] as any;
+          // Set standard saved value to default
+          savedParamsRef.current[k] = defaultParams[k] as any;
+        });
+        return next;
+      });
+    }
   };
 
   const executeExport = async () => {
@@ -580,22 +704,71 @@ export default function App() {
                   <Sparkles size={14} /> AUTO-MASTER
                 </button>
                 <div className="w-px h-6 bg-zinc-800 mx-2"></div>
-                <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider">Preset:</label>
-                <select 
-                  value={presetName} 
-                  onChange={handlePresetChange} 
-                  className="bg-zinc-950 border border-zinc-800 text-sm text-zinc-200 rounded p-1 outline-none focus:border-amber-500 shadow-sm"
-                >
-                  <option value="Custom" className="italic text-zinc-500">Custom</option>
-                  <option value="AI Mastered" className="font-bold text-amber-300" disabled>AI Mastered ✦</option>
-                  {Object.keys(presets).map(p => <option key={p} value={p}>{p}</option>)}
-                </select>
+                <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider mr-1">Preset:</label>
+                
+                {/* Styled Custom Preset Selector */}
+                <div className="relative" ref={presetRef}>
+                  <button 
+                    onClick={() => setPresetOpen(!presetOpen)}
+                    className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 text-xs font-semibold text-zinc-200 rounded-lg px-3 py-1.5 outline-none hover:border-amber-500/50 hover:text-white transition-all shadow-sm min-w-[130px] justify-between cursor-pointer focus:ring-1 focus:ring-amber-500"
+                  >
+                    <span className="flex items-center gap-1.5">
+                      <Music size={12} className="text-amber-500" />
+                      <span className={presetName === "AI Mastered" ? "text-amber-400 font-bold" : ""}>{presetName}</span>
+                    </span>
+                    <ChevronDown size={12} className={`text-zinc-500 transition-transform duration-200 ${presetOpen ? 'rotate-180' : ''}`} />
+                  </button>
+                  
+                  {presetOpen && (
+                    <div className="absolute right-0 mt-1.5 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] py-1.5 z-[100] animate-in fade-in slide-in-from-top-2 duration-150">
+                      <div className="px-2.5 py-1 text-[9px] font-bold text-zinc-500 tracking-wider uppercase border-b border-zinc-800/50 mb-1">
+                        Select Preset
+                      </div>
+                      <button
+                        onClick={() => {
+                          setPresetName("Custom");
+                          setPresetOpen(false);
+                        }}
+                        className="w-full text-left px-3 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 italic"
+                      >
+                        Custom
+                      </button>
+                      <button
+                        disabled
+                        className="w-full text-left px-3 py-1.5 text-xs text-amber-400/50 font-bold flex items-center gap-1 opacity-70 cursor-not-allowed"
+                      >
+                        AI Mastered ✦
+                      </button>
+                      {Object.keys(presets).map(p => (
+                        <button
+                          key={p}
+                          onClick={() => {
+                            handlePresetSelect(p);
+                            setPresetOpen(false);
+                          }}
+                          className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between ${
+                            presetName === p 
+                              ? 'bg-amber-500/10 text-amber-400 font-semibold' 
+                              : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
             
             <div className="flex-1 flex justify-around items-center pb-2 overflow-x-auto min-h-0">
               {/* EQ Section */}
-              <SliderGroup title="EQ / TONE">
+              <SliderGroup 
+                title="EQ / TONE" 
+                isBypassed={bypassState.eq} 
+                onBypassToggle={() => toggleBypass('eq')} 
+                onReset={() => resetSection('eq')}
+              >
                 <Knob label="Bass" value={params.eqBass} min={-24} max={24} defaultValue={0} color="orange" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqBass')} />
                 <Knob label="Deep" value={params.eqDeep} min={-24} max={24} defaultValue={0} color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqDeep')} />
                 <Knob label="Mid" value={params.eqMid} min={-24} max={24} defaultValue={0} color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqMid')} />
@@ -604,7 +777,12 @@ export default function App() {
               <div className="w-px h-full bg-zinc-800 mx-4"></div>
 
               {/* Dynamics Section */}
-              <SliderGroup title="DYNAMICS">
+              <SliderGroup 
+                title="DYNAMICS" 
+                isBypassed={bypassState.dynamics} 
+                onBypassToggle={() => toggleBypass('dynamics')} 
+                onReset={() => resetSection('dynamics')}
+              >
                 <Knob label="Comp" value={params.compThreshold} min={-60} max={0} defaultValue={-24} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compThreshold')} />
                 <Knob label="Ratio" value={params.compRatio} min={1} max={20} step={0.1} defaultValue={3} color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compRatio')} />
                 <Knob label="Limit" value={params.limitCeiling} min={-24} max={0} step={0.1} defaultValue={-0.1} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'limitCeiling')} />
@@ -613,14 +791,24 @@ export default function App() {
               <div className="w-px h-full bg-zinc-800 mx-4"></div>
 
               {/* Saturation Color Section */}
-              <SliderGroup title="COLOR / TONE">
+              <SliderGroup 
+                title="COLOR / TONE" 
+                isBypassed={bypassState.color} 
+                onBypassToggle={() => toggleBypass('color')} 
+                onReset={() => resetSection('color')}
+              >
                 <Knob label="Drive" value={params.saturation} min={0} max={100} defaultValue={0} unit="%" color="gold" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'saturation')} />
               </SliderGroup>
 
               <div className="w-px h-full bg-zinc-800 mx-4"></div>
 
               {/* Space / Mono Section */}
-              <SliderGroup title="SPACE / MONO">
+              <SliderGroup 
+                title="SPACE / MONO" 
+                isBypassed={bypassState.space} 
+                onBypassToggle={() => toggleBypass('space')} 
+                onReset={() => resetSection('space')}
+              >
                 <Knob label="Width" value={params.stereoWidth} min={0} max={200} defaultValue={100} unit="%" color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'stereoWidth')} />
                 <Knob label="Verb" value={params.reverb} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'reverb')} />
                 <Knob label="Echo" value={params.echo} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'echo')} />
@@ -629,7 +817,11 @@ export default function App() {
               <div className="w-px h-full bg-zinc-800 mx-4"></div>
               
               {/* Master */}
-              <SliderGroup title="MASTER">
+              <SliderGroup 
+                title="MASTER" 
+                showBypass={false} 
+                onReset={() => resetSection('master')}
+              >
                 <Knob label="Gain" value={params.gain} min={-24} max={24} defaultValue={6} unit="dB" color="rose" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'gain')} />
               </SliderGroup>
             </div>
@@ -1065,13 +1257,76 @@ export default function App() {
   );
 }
 
-function SliderGroup({ title, children }: { title: string, children: React.ReactNode }) {
+interface SliderGroupProps {
+  title: string;
+  children: React.ReactNode;
+  isBypassed?: boolean;
+  onBypassToggle?: () => void;
+  onReset?: () => void;
+  showBypass?: boolean;
+}
+
+function SliderGroup({ 
+  title, 
+  children, 
+  isBypassed = false, 
+  onBypassToggle, 
+  onReset, 
+  showBypass = true 
+}: SliderGroupProps) {
+  const [isSpinning, setIsSpinning] = useState(false);
+  
+  const handleResetClick = () => {
+    if (onReset) {
+      setIsSpinning(true);
+      onReset();
+      setTimeout(() => setIsSpinning(false), 500); // 500ms spin duration
+    }
+  };
+
   return (
-    <div className="flex flex-col items-center h-full">
-      <div className="flex gap-4 items-end flex-1 pb-2">
+    <div className="flex flex-col items-center h-full group relative">
+      <div className={`flex gap-4 items-end flex-1 pb-2 transition-opacity duration-300 ${
+        isBypassed ? 'opacity-40 pointer-events-none' : ''
+      }`}>
         {children}
       </div>
-      <div className="text-[10px] font-bold text-zinc-500 tracking-widest mt-2">{title}</div>
+      
+      {/* Footer Area with Title and Controls */}
+      <div className="flex items-center gap-1.5 mt-2 h-5">
+        {showBypass && onBypassToggle && (
+          <button 
+            onClick={onBypassToggle}
+            className={`p-1 rounded-full transition-all cursor-pointer ${
+              isBypassed 
+                ? 'text-zinc-600 hover:text-zinc-500' 
+                : 'text-amber-500 drop-shadow-[0_0_3px_rgba(245,158,11,0.5)] hover:text-amber-400'
+            }`}
+            title={isBypassed ? "Engage Section" : "Bypass Section"}
+          >
+            <Power size={10} />
+          </button>
+        )}
+        
+        <span className={`text-[10px] font-bold tracking-widest uppercase transition-colors select-none ${
+          isBypassed ? 'text-zinc-600' : 'text-zinc-500'
+        }`}>
+          {title}
+        </span>
+
+        {onReset && (
+          <button 
+            onClick={handleResetClick}
+            className={`p-1 text-zinc-600 hover:text-zinc-300 transition-all cursor-pointer opacity-0 group-hover:opacity-100 ${
+              isSpinning ? 'animate-spin' : ''
+            }`}
+            title="Reset Parameters"
+            style={{ animationDuration: '0.5s' }}
+          >
+            <RotateCcw size={10} />
+          </button>
+        )}
+      </div>
     </div>
   );
 }
