@@ -1,16 +1,21 @@
 import { 
   Sliders, 
-  Music 
+  Music,
+  Settings
 } from 'lucide-react';
 
 interface LeftSidebarProps {
   activePanel: 'eq' | 'master';
   onPanelChange: (panel: 'eq' | 'master') => void;
+  onOpenSettings: () => void;
+  language?: 'en' | 'kh';
 }
 
 export default function LeftSidebar({
   activePanel,
   onPanelChange,
+  onOpenSettings,
+  language = 'en',
 }: LeftSidebarProps) {
   const menuItems = [
     { 
@@ -22,7 +27,7 @@ export default function LeftSidebar({
     },
     { 
       id: 'master' as const, 
-      label: 'Master', 
+      label: language === 'kh' ? 'ម៉ាស្ទ័រ' : 'Master', 
       icon: Music,
       action: () => onPanelChange('master'),
       isActive: activePanel === 'master'
@@ -61,9 +66,18 @@ export default function LeftSidebar({
         </div>
       </div>
 
-      {/* Bottom Section: Clean Footer Accent */}
-      <div className="text-[8px] font-mono font-bold tracking-widest text-zinc-700 uppercase">
-        v2.0
+      {/* Bottom Section: Settings Icon & Clean Footer Accent */}
+      <div className="flex flex-col items-center gap-3 w-full shrink-0">
+        <button
+          onClick={onOpenSettings}
+          className="w-10 h-10 rounded-lg flex items-center justify-center text-zinc-500 hover:text-amber-500 hover:bg-zinc-900 border border-transparent hover:border-zinc-800 transition-all cursor-pointer group"
+          title={language === 'kh' ? 'ការកំណត់' : 'Settings'}
+        >
+          <Settings size={20} className="transition-transform group-hover:rotate-45" />
+        </button>
+        <div className="text-[8px] font-mono font-bold tracking-widest text-zinc-700 uppercase">
+          v2.0
+        </div>
       </div>
     </div>
   );

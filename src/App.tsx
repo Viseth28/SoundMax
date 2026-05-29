@@ -10,6 +10,159 @@ import Knob from './components/Knob';
 import Equalizer10Band, { eq10Presets } from './components/Equalizer10Band';
 import LeftSidebar from './components/LeftSidebar';
 
+const translations = {
+  en: {
+    title: "SoundMax Studio Console",
+    bypassAll: "Bypass All",
+    active: "Active",
+    videoStudio: "Video Studio",
+    exportConfig: "Export Config",
+    spectrumAnalyzer: "SPECTRUM ANALYZER",
+    graphicEq: "10-BAND GRAPHIC EQUALIZER",
+    masteringConsole: "MASTERING CONSOLE",
+    presetLabel: "Preset:",
+    masterPreset: "Mastering Preset",
+    channelRouting: "Active Channel Routing",
+    bypassChannel: "BYPASS CHANNEL",
+    gainDb: "Gain dB",
+    eqTone: "EQ / TONE",
+    dynamics: "DYNAMICS",
+    colorTone: "COLOR / TONE",
+    spaceMono: "SPACE / MONO",
+    masterOutput: "MASTER OUTPUT",
+    dialBass: "BASS",
+    dialDeep: "DEEP",
+    dialMid: "MID",
+    dialComp: "COMP",
+    dialRatio: "RATIO",
+    dialLimit: "LIMIT",
+    dialDrive: "DRIVE",
+    dialWidth: "WIDTH",
+    dialVerb: "VERB",
+    dialEcho: "ECHO",
+    dialGain: "GAIN",
+    // Queue section
+    queueTitle: "Batch Mastering Queue",
+    dropArea: "Drop audio tracks here, or click to browse",
+    supportedFormats: "Supported: WAV, MP3, FLAC",
+    clearQueue: "Clear Queue",
+    processAll: "Process All Tracks",
+    outFormat: "Output Format",
+    sampleRate: "Sample Rate",
+    statusIdle: "Queued",
+    statusProcessing: "Processing...",
+    statusCompleted: "Completed",
+    statusFailed: "Failed",
+    // Settings
+    settingsTitle: "Console Settings",
+    languageLabel: "Interface Language",
+    themeLabel: "Visual Console Theme",
+    langEn: "English",
+    langKh: "ភាសាខ្មែរ",
+    themeDark: "Dark Theme",
+    themeLight: "Light Theme",
+    closeBtn: "Close Settings",
+    flatPreset: "Flat",
+    bassBoost: "Bass Boost",
+    vocalClarity: "Vocal Clarity",
+    loudnessSmile: "Loudness",
+    midScoop: "Mid Scoop",
+    classicRock: "Classic Rock",
+    customPreset: "Custom",
+    defaultPreset: "Default",
+    edmPunch: "EDM Punch",
+    sunoPolisher: "Suno Polisher",
+    streamingSafe: "Streaming Safe",
+    vintageWarm: "Vintage Warmth",
+    spaciousVerb: "Spacious Room"
+  },
+  kh: {
+    title: "ផ្ទាំងបញ្ជាស្ទូឌីយោ SoundMax",
+    bypassAll: "រំលងទាំងអស់",
+    active: "ដំណើរការ",
+    videoStudio: "ស្ទូឌីយោវីដេអូ",
+    exportConfig: "នាំចេញឯកសារកំណត់",
+    spectrumAnalyzer: "ម៉ាស៊ីនវិភាគរលកសំឡេង",
+    graphicEq: "អេក្វាឡឺហ្សឺក្រាហ្វិក ១០-ប៊ែន",
+    masteringConsole: "ផ្ទាំងបញ្ជាម៉ាស្ទ័ររីង",
+    presetLabel: "កំណត់ស្រាប់៖",
+    masterPreset: "កំណត់ស្រាប់ម៉ាស្ទ័រ",
+    channelRouting: "ផ្លូវបញ្ជូនសញ្ញាសកម្ម",
+    bypassChannel: "រំលងប៉ុស្តិ៍នេះ",
+    gainDb: "កម្រិតសម្លេង (dB)",
+    eqTone: "សម្លេង / ថូន (EQ / Tone)",
+    dynamics: "ឌីណាមិក (Dynamics)",
+    colorTone: "ពណ៌សម្លេង (Color / Tone)",
+    spaceMono: "លំហ / ម៉ូណូ (Space / Mono)",
+    masterOutput: "ម៉ាស្ទ័រចេញ (Master Out)",
+    dialBass: "បាស (Bass)",
+    dialDeep: "ជ្រៅ (Deep)",
+    dialMid: "កណ្តាល (Mid)",
+    dialComp: "កុំប្រេសឺ (Comp)",
+    dialRatio: "ផលធៀប (Ratio)",
+    dialLimit: "លីមីត (Limit)",
+    dialDrive: "ដ្រាយវ៍ (Drive)",
+    dialWidth: "ទទឹង (Width)",
+    dialVerb: "វើប (Verb)",
+    dialEcho: "អេកូ (Echo)",
+    dialGain: "ហ្គេន (Gain)",
+    // Queue section
+    queueTitle: "ជួរម៉ាស្ទ័រច្រើនឯកសារ",
+    dropArea: "អូសឯកសារសំឡេងដាក់ទីនេះ ឬចុចដើម្បីស្វែងរក",
+    supportedFormats: "គាំទ្រ៖ WAV, MP3, FLAC",
+    clearQueue: "សម្អាតជួរ",
+    processAll: "ដំណើរការឯកសារទាំងអស់",
+    outFormat: "ទម្រង់ចេញ",
+    sampleRate: "កម្រិតគំរូ",
+    statusIdle: "នៅក្នុងជួរ",
+    statusProcessing: "កំពុងដំណើរការ...",
+    statusCompleted: "បានបញ្ចប់",
+    statusFailed: "បរាជ័យ",
+    // Settings
+    settingsTitle: "ការកំណត់ផ្ទាំងបញ្ជា",
+    languageLabel: "ភាសានៃផ្ទាំងបញ្ជា",
+    themeLabel: "ស្បែកពណ៌របស់ផ្ទាំងបញ្ជា",
+    langEn: "English",
+    langKh: "ភាសាខ្មែរ",
+    themeDark: "ស្បែកពណ៌ងងឹត",
+    themeLight: "ស្បែកពណ៌ភ្លឺ",
+    closeBtn: "បិទការកំណត់",
+    flatPreset: "ធម្មតា",
+    bassBoost: "បង្កើនបាស",
+    vocalClarity: "សំឡេងច្បាស់",
+    loudnessSmile: "សំឡេងខ្លាំង",
+    midScoop: "បន្ថយសំឡេងកណ្តាល",
+    classicRock: "រ៉ក់ក្លាសិក",
+    customPreset: "ផ្ទាល់ខ្លួន",
+    defaultPreset: "លំនាំដើម",
+    edmPunch: "EDM ខ្លាំង",
+    sunoPolisher: "Suno កែសម្រួល",
+    streamingSafe: "សុវត្ថិភាពស្ទ្រីមីង",
+    vintageWarm: "កំដៅបែបបុរាណ",
+    spaciousVerb: "បន្ទប់ធំទូលាយ"
+  }
+};
+
+const getPresetNameTrans = (pName: string, lang: 'en' | 'kh') => {
+  const t = translations[lang];
+  switch (pName) {
+    case 'Default': return t.defaultPreset;
+    case 'Flat': return t.flatPreset;
+    case 'Bass Boost': return t.bassBoost;
+    case 'Vocal Clarity': return t.vocalClarity;
+    case 'Loudness (Smile)': return t.loudnessSmile;
+    case 'Mid Scoop': return t.midScoop;
+    case 'Classic Rock': return t.classicRock;
+    case 'EDM Punch': return t.edmPunch;
+    case 'Suno Polisher': return t.sunoPolisher;
+    case 'Streaming Safe': return t.streamingSafe;
+    case 'Vintage Warmth': return t.vintageWarm;
+    case 'Spacious Room': return t.spaciousVerb;
+    case 'Custom': return t.customPreset;
+    default: return pName;
+  }
+};
+
 interface QueuedFile {
   id: string;
   file: File;
@@ -43,6 +196,24 @@ export default function App() {
   const presetRef = useRef<HTMLDivElement>(null);
   // Workspace switching states
   const [activePanel, setActivePanel] = useState<'eq' | 'master'>('master');
+
+  // Settings & Theme preferences
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [language, setLanguage] = useState<'en' | 'kh'>(() => (localStorage.getItem('soundmax_lang') as 'en' | 'kh') || 'en');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('soundmax_theme') as 'dark' | 'light') || 'dark');
+
+  useEffect(() => {
+    localStorage.setItem('soundmax_theme', theme);
+    if (theme === 'light') {
+      document.body.classList.add('light-mode');
+    } else {
+      document.body.classList.remove('light-mode');
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    localStorage.setItem('soundmax_lang', language);
+  }, [language]);
 
   // Click-outside listener for Preset Select Dropdown
   useEffect(() => {
@@ -734,24 +905,26 @@ export default function App() {
     }
   };
 
+  const t = translations[language];
+
   return (
     <div className="flex flex-col h-screen bg-zinc-950 text-white font-sans overflow-hidden">
       {/* Header */}
       <header className="flex justify-between items-center px-6 py-4 bg-zinc-900 border-b border-zinc-800 shadow-md">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded bg-amber-500 flex items-center justify-center font-bold text-lg shadow-[0_0_15px_rgba(245,158,11,0.6)]">
+          <div className="w-8 h-8 rounded bg-amber-500 flex items-center justify-center font-bold text-lg shadow-[0_0_15px_rgba(245,158,11,0.6)] animate-pulse">
             SM
           </div>
-          <h1 className="text-xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300">
-            SOUNDMAX
+          <h1 className="text-xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300 font-sans uppercase">
+            {t.title}
           </h1>
         </div>
         <div className="flex items-center gap-4">
-          <button onClick={() => setShowVideoModal(true)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-sm font-semibold rounded transition-all flex items-center gap-2 text-zinc-200">
-            <Video size={16} /> Video Studio
+          <button onClick={() => setShowVideoModal(true)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-sm font-semibold rounded transition-all flex items-center gap-2 text-zinc-200 cursor-pointer">
+            <Video size={16} /> {t.videoStudio}
           </button>
-          <button onClick={() => setShowExportModal(true)} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-sm font-semibold rounded transition-all shadow-[0_0_10px_rgba(245,158,11,0.4)] flex items-center gap-2">
-            <Download size={16} /> Export Config
+          <button onClick={() => setShowExportModal(true)} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-sm font-semibold rounded transition-all shadow-[0_0_10px_rgba(245,158,11,0.4)] flex items-center gap-2 cursor-pointer">
+            <Download size={16} /> {t.exportConfig}
           </button>
         </div>
       </header>
@@ -762,6 +935,8 @@ export default function App() {
         <LeftSidebar 
           activePanel={activePanel}
           onPanelChange={setActivePanel}
+          onOpenSettings={() => setShowSettingsModal(true)}
+          language={language}
         />
 
         {/* Dashboard Content Columns */}
@@ -783,20 +958,21 @@ export default function App() {
               onChange={(val, idx) => handleSliderChange({ target: { value: String(val) } } as any, 'eq10', idx)}
               presetName={presetName10}
               onPresetSelect={handlePresetSelect10}
+              language={language}
             />
           ) : (
             /* Settings Console (Bottom Panel) - Now flex-grow to occupy all vertical space beautifully */
             <div className="flex-grow flex-1 flex flex-col bg-zinc-900 rounded-xl border border-zinc-800 p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)] select-none min-h-[360px]">
               <div className="flex justify-between items-center mb-4 shrink-0 font-sans">
                 <h2 className="text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2">
-                  <Settings size={16} /> MASTERING CONSOLE
+                  <Settings size={16} /> {t.masteringConsole}
                 </h2>
                 <div className="flex items-center gap-2">
-                  <button onClick={handleAutoMaster} className="mr-2 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold tracking-wider rounded shadow-[0_0_10px_rgba(245,158,11,0.5)] flex items-center gap-1.5 transition-all">
-                    <Sparkles size={14} /> AUTO-MASTER
+                  <button onClick={handleAutoMaster} className="mr-2 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold tracking-wider rounded shadow-[0_0_10px_rgba(245,158,11,0.5)] flex items-center gap-1.5 transition-all cursor-pointer">
+                    <Sparkles size={14} /> {language === 'kh' ? 'អូតូ-ម៉ាស្ទ័រ' : 'AUTO-MASTER'}
                   </button>
                   <div className="w-px h-6 bg-zinc-800 mx-2"></div>
-                  <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider mr-1">Preset:</label>
+                  <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider mr-1">{t.presetLabel}</label>
                   
                   {/* Styled Custom Preset Selector */}
                   <div className="relative" ref={presetRef}>
@@ -806,7 +982,9 @@ export default function App() {
                     >
                       <span className="flex items-center gap-1.5 font-sans">
                         <Music size={12} className="text-amber-500" />
-                        <span className={presetName === "AI Mastered" ? "text-amber-400 font-bold" : ""}>{presetName}</span>
+                        <span className={presetName === "AI Mastered" ? "text-amber-400 font-bold" : ""}>
+                          {getPresetNameTrans(presetName, language)}
+                        </span>
                       </span>
                       <ChevronDown size={12} className={`text-zinc-500 transition-transform duration-200 ${presetOpen ? 'rotate-180' : ''}`} />
                     </button>
@@ -814,22 +992,22 @@ export default function App() {
                     {presetOpen && (
                       <div className="absolute right-0 mt-1.5 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] py-1.5 z-[100] animate-in fade-in slide-in-from-top-2 duration-150 font-sans">
                         <div className="px-2.5 py-1 text-[9px] font-bold text-zinc-500 tracking-wider uppercase border-b border-zinc-800/50 mb-1">
-                          Select Preset
+                          {language === 'kh' ? 'ជ្រើសរើសទិន្នន័យស្រាប់' : 'Select Preset'}
                         </div>
                         <button
                           onClick={() => {
                             setPresetName("Custom");
                             setPresetOpen(false);
                           }}
-                          className="w-full text-left px-3 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 italic"
+                          className="w-full text-left px-3 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 italic cursor-pointer"
                         >
-                          Custom
+                          {t.customPreset}
                         </button>
                         <button
                           disabled
                           className="w-full text-left px-3 py-1.5 text-xs text-amber-400/50 font-bold flex items-center gap-1 opacity-70 cursor-not-allowed"
                         >
-                          AI Mastered ✦
+                          {language === 'kh' ? 'AI ម៉ាស្ទ័ររួច ✦' : 'AI Mastered ✦'}
                         </button>
                         {Object.keys(presets).map(p => (
                           <button
@@ -838,13 +1016,13 @@ export default function App() {
                               handlePresetSelect(p);
                               setPresetOpen(false);
                             }}
-                            className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between ${
+                            className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between cursor-pointer ${
                               presetName === p 
                                 ? 'bg-amber-500/10 text-amber-400 font-semibold' 
                                 : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
                             }`}
                           >
-                            {p}
+                            {getPresetNameTrans(p, language)}
                           </button>
                         ))}
                       </div>
@@ -859,14 +1037,15 @@ export default function App() {
                   {/* EQ Section */}
                   <div className="flex-1 flex justify-center">
                     <SliderGroup 
-                      title="EQ / TONE" 
+                      title={t.eqTone} 
                       isBypassed={bypassState.eq} 
                       onBypassToggle={() => toggleBypass('eq')} 
                       onReset={() => resetSection('eq')}
+                      language={language}
                     >
-                      <Knob label="Bass" value={params.eqBass} min={-24} max={24} defaultValue={0} color="orange" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqBass')} />
-                      <Knob label="Deep" value={params.eqDeep} min={-24} max={24} defaultValue={0} color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqDeep')} />
-                      <Knob label="Mid" value={params.eqMid} min={-24} max={24} defaultValue={0} color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqMid')} />
+                      <Knob label={t.dialBass} value={params.eqBass} min={-24} max={24} defaultValue={0} color="orange" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqBass')} />
+                      <Knob label={t.dialDeep} value={params.eqDeep} min={-24} max={24} defaultValue={0} color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqDeep')} />
+                      <Knob label={t.dialMid} value={params.eqMid} min={-24} max={24} defaultValue={0} color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqMid')} />
                     </SliderGroup>
                   </div>
 
@@ -875,14 +1054,15 @@ export default function App() {
                   {/* Dynamics Section */}
                   <div className="flex-1 flex justify-center">
                     <SliderGroup 
-                      title="DYNAMICS" 
+                      title={t.dynamics} 
                       isBypassed={bypassState.dynamics} 
                       onBypassToggle={() => toggleBypass('dynamics')} 
                       onReset={() => resetSection('dynamics')}
+                      language={language}
                     >
-                      <Knob label="Comp" value={params.compThreshold} min={-60} max={0} defaultValue={-24} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compThreshold')} />
-                      <Knob label="Ratio" value={params.compRatio} min={1} max={20} step={0.1} defaultValue={3} color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compRatio')} />
-                      <Knob label="Limit" value={params.limitCeiling} min={-24} max={0} step={0.1} defaultValue={-0.1} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'limitCeiling')} />
+                      <Knob label={t.dialComp} value={params.compThreshold} min={-60} max={0} defaultValue={-24} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compThreshold')} />
+                      <Knob label={t.dialRatio} value={params.compRatio} min={1} max={20} step={0.1} defaultValue={3} color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compRatio')} />
+                      <Knob label={t.dialLimit} value={params.limitCeiling} min={-24} max={0} step={0.1} defaultValue={-0.1} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'limitCeiling')} />
                     </SliderGroup>
                   </div>
                 </div>
@@ -894,12 +1074,13 @@ export default function App() {
                   {/* Saturation Color Section */}
                   <div className="flex-1 flex justify-center">
                     <SliderGroup 
-                      title="COLOR / TONE" 
+                      title={t.colorTone} 
                       isBypassed={bypassState.color} 
                       onBypassToggle={() => toggleBypass('color')} 
                       onReset={() => resetSection('color')}
+                      language={language}
                     >
-                      <Knob label="Drive" value={params.saturation} min={0} max={100} defaultValue={0} unit="%" color="gold" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'saturation')} />
+                      <Knob label={t.dialDrive} value={params.saturation} min={0} max={100} defaultValue={0} unit="%" color="gold" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'saturation')} />
                     </SliderGroup>
                   </div>
 
@@ -908,14 +1089,15 @@ export default function App() {
                   {/* Space / Mono Section */}
                   <div className="flex-1 flex justify-center">
                     <SliderGroup 
-                      title="SPACE / MONO" 
+                      title={t.spaceMono} 
                       isBypassed={bypassState.space} 
                       onBypassToggle={() => toggleBypass('space')} 
                       onReset={() => resetSection('space')}
+                      language={language}
                     >
-                      <Knob label="Width" value={params.stereoWidth} min={0} max={200} defaultValue={100} unit="%" color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'stereoWidth')} />
-                      <Knob label="Verb" value={params.reverb} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'reverb')} />
-                      <Knob label="Echo" value={params.echo} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'echo')} />
+                      <Knob label={t.dialWidth} value={params.stereoWidth} min={0} max={200} defaultValue={100} unit="%" color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'stereoWidth')} />
+                      <Knob label={t.dialVerb} value={params.reverb} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'reverb')} />
+                      <Knob label={t.dialEcho} value={params.echo} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'echo')} />
                     </SliderGroup>
                   </div>
 
@@ -924,11 +1106,12 @@ export default function App() {
                   {/* Master */}
                   <div className="flex-1 flex justify-center">
                     <SliderGroup 
-                      title="MASTER" 
+                      title={t.masterOutput} 
                       showBypass={false} 
                       onReset={() => resetSection('master')}
+                      language={language}
                     >
-                      <Knob label="Gain" value={params.gain} min={-24} max={24} defaultValue={6} unit="dB" color="rose" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'gain')} />
+                      <Knob label={t.dialGain} value={params.gain} min={-24} max={24} defaultValue={6} unit="dB" color="rose" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'gain')} />
                     </SliderGroup>
                   </div>
                 </div>
@@ -945,9 +1128,9 @@ export default function App() {
           onDrop={handleDrop}
         >
           <div className="px-4 py-3 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/80 backdrop-blur-sm z-10">
-            <h2 className="text-sm font-semibold text-zinc-300 tracking-wider">BATCH QUEUE</h2>
+            <h2 className="text-sm font-semibold text-zinc-300 tracking-wider">{t.queueTitle}</h2>
             <label className="cursor-pointer flex items-center gap-2 px-3 py-1.5 bg-zinc-800 hover:bg-slate-600 rounded text-xs font-bold text-zinc-200 transition-colors">
-              <Upload size={14} /> Add Files
+              <Upload size={14} /> {language === 'kh' ? 'បន្ថែមឯកសារ' : 'Add Files'}
               <input type="file" multiple accept="audio/*" className="hidden" onChange={handleFileUpload} />
             </label>
           </div>
@@ -955,16 +1138,16 @@ export default function App() {
             {files.length === 0 ? (
               <div className="h-full flex flex-col items-center justify-center text-zinc-500 border-2 border-dashed border-zinc-800 rounded-lg">
                 <Upload size={32} className="mb-2 opacity-50" />
-                <p className="text-xs text-center px-4">Drag & Drop audio files here or click Add Files</p>
+                <p className="text-xs text-center px-4">{t.dropArea}</p>
               </div>
             ) : (
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="text-zinc-400 border-b border-zinc-800">
-                    <th className="pb-2 font-medium">Filename</th>
-                    <th className="pb-2 font-medium w-14">Dur.</th>
-                    <th className="pb-2 font-medium w-14">Type</th>
-                    <th className="pb-2 font-medium w-24">Status</th>
+                    <th className="pb-2 font-medium">{language === 'kh' ? 'ឈ្មោះឯកសារ' : 'Filename'}</th>
+                    <th className="pb-2 font-medium w-14">{language === 'kh' ? 'ថេរវេលា' : 'Dur.'}</th>
+                    <th className="pb-2 font-medium w-14">{language === 'kh' ? 'ប្រភេទ' : 'Type'}</th>
+                    <th className="pb-2 font-medium w-24">{language === 'kh' ? 'ស្ថានភាព' : 'Status'}</th>
                     <th className="pb-2 font-medium w-10 text-right"></th>
                   </tr>
                 </thead>
@@ -991,12 +1174,12 @@ export default function App() {
                           f.status === 'Processing' ? 'bg-amber-900/50 text-amber-400 animate-pulse' :
                           'bg-zinc-800 text-zinc-400'
                         }`}>
-                          {f.status}
+                          {f.status === 'Completed' ? t.statusCompleted : f.status === 'Processing' ? t.statusProcessing : t.statusIdle}
                         </span>
                       </td>
                       <td className="py-3 text-right" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-2">
-                          <button onClick={() => removeFile(f.id)} title="Remove" className="p-1 bg-zinc-800 hover:bg-red-500 rounded-full transition-colors opacity-50 hover:opacity-100 group-hover:opacity-100">
+                          <button onClick={() => removeFile(f.id)} title="Remove" className="p-1 bg-zinc-800 hover:bg-red-500 rounded-full transition-colors opacity-50 hover:opacity-100 group-hover:opacity-100 cursor-pointer">
                             <X size={12} className="text-zinc-300 hover:text-white" />
                           </button>
                         </div>
@@ -1253,6 +1436,98 @@ export default function App() {
 
 
 
+      {/* Console Settings Modal */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2 font-sans uppercase">
+                <Settings size={20} className="text-amber-500 animate-spin-slow" />
+                {t.settingsTitle}
+              </h2>
+              <button onClick={() => setShowSettingsModal(false)} className="text-zinc-400 hover:text-white transition-colors cursor-pointer">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-6">
+              {/* Language Section */}
+              <div className="space-y-2">
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-zinc-400">
+                  {t.languageLabel}
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => setLanguage('en')}
+                    className={`p-4 rounded-lg border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+                      language === 'en' 
+                        ? 'bg-amber-500/10 border-amber-500 text-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.1)]' 
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                    }`}
+                  >
+                    <span className="text-2xl font-bold font-mono">🇬🇧</span>
+                    <span className="text-xs font-bold font-sans">English</span>
+                  </button>
+                  <button 
+                    onClick={() => setLanguage('kh')}
+                    className={`p-4 rounded-lg border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+                      language === 'kh' 
+                        ? 'bg-amber-500/10 border-amber-500 text-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.1)]' 
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                    }`}
+                  >
+                    <span className="text-2xl font-bold font-mono">🇰🇭</span>
+                    <span className="text-xs font-bold font-sans">ភាសាខ្មែរ</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Theme Section */}
+              <div className="space-y-2">
+                <label className="block text-xs font-extrabold uppercase tracking-wider text-zinc-400">
+                  {t.themeLabel}
+                </label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button 
+                    onClick={() => setTheme('dark')}
+                    className={`p-4 rounded-lg border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+                      theme === 'dark' 
+                        ? 'bg-amber-500/10 border-amber-500 text-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.1)]' 
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                    }`}
+                  >
+                    <span className="text-xl">🌙</span>
+                    <span className="text-xs font-bold font-sans">{t.themeDark}</span>
+                  </button>
+                  <button 
+                    onClick={() => setTheme('light')}
+                    className={`p-4 rounded-lg border flex flex-col items-center justify-center gap-2 cursor-pointer transition-all ${
+                      theme === 'light' 
+                        ? 'bg-amber-500/10 border-amber-500 text-amber-500 shadow-[0_0_10px_rgba(245,158,11,0.1)]' 
+                        : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200'
+                    }`}
+                  >
+                    <span className="text-xl">☀️</span>
+                    <span className="text-xs font-bold font-sans">{t.themeLight}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 bg-zinc-950 border-t border-zinc-800 flex justify-end">
+              <button 
+                onClick={() => setShowSettingsModal(false)}
+                className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded border border-zinc-700/50 transition-all cursor-pointer font-sans"
+              >
+                {t.closeBtn}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
+
       {/* Media Controller Bar */}
       <div className="h-20 bg-zinc-900 border-t border-zinc-800 px-6 flex items-center justify-between shadow-2xl z-40 select-none">
         {/* Left: Track Info */}
@@ -1376,6 +1651,7 @@ interface SliderGroupProps {
   onBypassToggle?: () => void;
   onReset?: () => void;
   showBypass?: boolean;
+  language?: 'en' | 'kh';
 }
 
 function SliderGroup({ 
@@ -1384,7 +1660,8 @@ function SliderGroup({
   isBypassed = false, 
   onBypassToggle, 
   onReset, 
-  showBypass = true 
+  showBypass = true,
+  language = 'en'
 }: SliderGroupProps) {
   const [isSpinning, setIsSpinning] = useState(false);
   
@@ -1414,7 +1691,10 @@ function SliderGroup({
                 ? 'text-zinc-600 hover:text-zinc-500' 
                 : 'text-amber-500 drop-shadow-[0_0_3px_rgba(245,158,11,0.5)] hover:text-amber-400'
             }`}
-            title={isBypassed ? "Engage Section" : "Bypass Section"}
+            title={isBypassed 
+              ? (language === 'kh' ? 'បើកផ្នែកនេះ' : 'Engage Section') 
+              : (language === 'kh' ? 'រំលងផ្នែកនេះ' : 'Bypass Section')
+            }
           >
             <Power size={10} />
           </button>
@@ -1432,7 +1712,7 @@ function SliderGroup({
             className={`p-1 text-zinc-600 hover:text-zinc-300 transition-all cursor-pointer opacity-0 group-hover:opacity-100 ${
               isSpinning ? 'animate-spin' : ''
             }`}
-            title="Reset Parameters"
+            title={language === 'kh' ? 'កំណត់ឡើងវិញទិន្នន័យទាំងអស់' : 'Reset Parameters'}
             style={{ animationDuration: '0.5s' }}
           >
             <RotateCcw size={10} />
@@ -1462,8 +1742,10 @@ function Visualizer({ analyser }: { analyser: AnalyserNode | null }) {
       const height = canvas.height;
       ctx.clearRect(0, 0, width, height);
 
+      const isLight = document.body.classList.contains('light-mode');
+
       // Draw background
-      ctx.fillStyle = 'rgba(9, 9, 11, 1)'; 
+      ctx.fillStyle = isLight ? 'rgba(244, 244, 245, 1)' : 'rgba(9, 9, 11, 1)'; 
       ctx.fillRect(0, 0, width, height);
 
       // ── Calculate RMS & estimated LUFS ──
@@ -1517,9 +1799,9 @@ function Visualizer({ analyser }: { analyser: AnalyserNode | null }) {
       }
 
       // Draw Meters Area (right 150 pixels)
-      ctx.fillStyle = '#18181b'; 
+      ctx.fillStyle = isLight ? '#e4e4e7' : '#18181b'; 
       ctx.fillRect(specWidth, 0, 150, height);
-      ctx.fillStyle = '#09090b'; 
+      ctx.fillStyle = isLight ? '#f4f4f5' : '#09090b'; 
       ctx.fillRect(specWidth + 10, 10, 30, height - 20); 
       ctx.fillRect(specWidth + 50, 10, 30, height - 20); 
 
@@ -1536,7 +1818,7 @@ function Visualizer({ analyser }: { analyser: AnalyserNode | null }) {
         ctx.fillStyle = meterGrad;
         ctx.fillRect(xOffset, height - 10 - fillH, 30, fillH);
 
-        ctx.fillStyle = '#a1a1aa';
+        ctx.fillStyle = isLight ? '#27272a' : '#a1a1aa';
         ctx.font = '8px sans-serif';
         ctx.fillText(title, xOffset + 4, height - 12);
         ctx.fillText(`${Math.round(dbVal)}`, xOffset + 4, 18);
@@ -1546,10 +1828,10 @@ function Visualizer({ analyser }: { analyser: AnalyserNode | null }) {
       drawMeterBar(specWidth + 50, lufsEst, 'LUFS');
 
       // Draw guidelines
-      ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+      ctx.strokeStyle = isLight ? 'rgba(9,9,11,0.15)' : 'rgba(255,255,255,0.2)';
       ctx.lineWidth = 1;
       ctx.font = '7px sans-serif';
-      ctx.fillStyle = '#a1a1aa';
+      ctx.fillStyle = isLight ? '#3f3f46' : '#a1a1aa';
 
       // Guide for -14dB (Streaming Standard)
       const y14 = 10 + (1 - (-14 + 60) / 60) * (height - 20);

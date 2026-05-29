@@ -19,7 +19,36 @@ interface Equalizer10BandProps {
   presetName: string;
   onPresetSelect: (name: string) => void;
   isSidebar?: boolean;
+  language?: 'en' | 'kh';
 }
+
+const getPresetNameTrans = (pName: string, lang: 'en' | 'kh') => {
+  const translations = {
+    en: {
+      "Flat": "Flat",
+      "Bass Boost": "Bass Boost",
+      "Vocal Clarity": "Vocal Clarity",
+      "Loudness (Smile)": "Loudness",
+      "Mid Scoop": "Mid Scoop",
+      "Classic Rock": "Classic Rock",
+      "Custom": "Custom",
+      "BYP": "BYP",
+      "ON": "ON"
+    },
+    kh: {
+      "Flat": "ធម្មតា",
+      "Bass Boost": "បង្កើនបាស",
+      "Vocal Clarity": "សំឡេងច្បាស់",
+      "Loudness (Smile)": "សំឡេងខ្លាំង",
+      "Mid Scoop": "បន្ថយសំឡេងកណ្តាល",
+      "Classic Rock": "រ៉ក់ក្លាសិក",
+      "Custom": "ផ្ទាល់ខ្លួន",
+      "BYP": "រំលង",
+      "ON": "បើក"
+    }
+  };
+  return translations[lang][pName as keyof typeof translations['en']] || pName;
+};
 
 export default function Equalizer10Band({
   values,
@@ -30,6 +59,7 @@ export default function Equalizer10Band({
   presetName,
   onPresetSelect,
   isSidebar = false,
+  language = 'en',
 }: Equalizer10BandProps) {
   const frequencies = [
     { label: '31', unit: 'Hz' },
@@ -81,7 +111,7 @@ export default function Equalizer10Band({
         {!isSidebar && (
           <h2 className="text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-            10-BAND GRAPHIC EQUALIZER
+            {language === 'kh' ? 'អេក្វាឡឺហ្សឺក្រាហ្វិក ១០-ប៊ែន' : '10-BAND GRAPHIC EQUALIZER'}
           </h2>
         )}
         
@@ -102,7 +132,9 @@ export default function Equalizer10Band({
             >
               <span className="flex items-center gap-1 truncate">
                 <Music size={10} className="text-amber-500 shrink-0" />
-                <span className={`truncate ${presetName === "Custom" ? "italic text-zinc-500" : "text-zinc-200"}`}>{presetName}</span>
+                <span className={`truncate ${presetName === "Custom" || presetName === "ផ្ទាល់ខ្លួន" ? "italic text-zinc-500" : "text-zinc-200"}`}>
+                  {getPresetNameTrans(presetName, language)}
+                </span>
               </span>
               <ChevronDown size={10} className={`text-zinc-500 transition-transform shrink-0 ${dropdownOpen ? 'rotate-180' : ''}`} />
             </button>
@@ -122,7 +154,7 @@ export default function Equalizer10Band({
                         : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
                     }`}
                   >
-                    {p}
+                    {getPresetNameTrans(p, language)}
                   </button>
                 ))}
               </div>
@@ -136,10 +168,10 @@ export default function Equalizer10Band({
                 ? 'bg-zinc-950 border-zinc-800 text-zinc-600 hover:text-zinc-400 hover:border-zinc-700' 
                 : 'bg-amber-500/10 border-amber-500/30 text-amber-500 drop-shadow-[0_0_4px_rgba(245,158,11,0.3)] hover:text-amber-400'
             }`}
-            title={isBypassed ? "Engage 10-Band EQ" : "Bypass 10-Band EQ"}
+            title={isBypassed ? (language === 'kh' ? 'បើកដំណើរការ EQ' : 'Engage 10-Band EQ') : (language === 'kh' ? 'រំលង EQ' : 'Bypass 10-Band EQ')}
           >
             <Power size={11} />
-            <span>{isBypassed ? 'BYP' : 'ON'}</span>
+            <span>{isBypassed ? (language === 'kh' ? 'រំលង' : 'BYP') : (language === 'kh' ? 'បើក' : 'ON')}</span>
           </button>
 
           <button 
@@ -147,7 +179,7 @@ export default function Equalizer10Band({
             className={`p-1.5 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded transition-all cursor-pointer opacity-80 hover:opacity-100 shrink-0 ${
               isSpinning ? 'animate-spin' : ''
             }`}
-            title="Reset All Faders to 0 dB"
+            title={language === 'kh' ? 'កំណត់ឡើងវិញទិន្នន័យទាំងអស់' : 'Reset All Faders to 0 dB'}
             style={{ animationDuration: '0.5s' }}
           >
             <RotateCcw size={12} />
