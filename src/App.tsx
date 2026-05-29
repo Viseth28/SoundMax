@@ -812,8 +812,8 @@ export default function App() {
             />
           ) : (
             /* Settings Console (Bottom Panel) - Now flex-grow to occupy all vertical space beautifully */
-            <div className="flex-grow flex-1 flex flex-col bg-zinc-900 rounded-xl border border-zinc-800 p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)] select-none min-h-[240px]">
-              <div className="flex justify-between items-center mb-6 shrink-0">
+            <div className="flex-grow flex-1 flex flex-col bg-zinc-900 rounded-xl border border-zinc-800 p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)] select-none min-h-[360px]">
+              <div className="flex justify-between items-center mb-4 shrink-0 font-sans">
                 <h2 className="text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2">
                   <Settings size={16} /> MASTERING CONSOLE
                 </h2>
@@ -830,7 +830,7 @@ export default function App() {
                       onClick={() => setPresetOpen(!presetOpen)}
                       className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 text-xs font-semibold text-zinc-200 rounded-lg px-3 py-1.5 outline-none hover:border-amber-500/50 hover:text-white transition-all shadow-sm min-w-[130px] justify-between cursor-pointer focus:ring-1 focus:ring-amber-500"
                     >
-                      <span className="flex items-center gap-1.5">
+                      <span className="flex items-center gap-1.5 font-sans">
                         <Music size={12} className="text-amber-500" />
                         <span className={presetName === "AI Mastered" ? "text-amber-400 font-bold" : ""}>{presetName}</span>
                       </span>
@@ -838,7 +838,7 @@ export default function App() {
                     </button>
                     
                     {presetOpen && (
-                      <div className="absolute right-0 mt-1.5 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] py-1.5 z-[100] animate-in fade-in slide-in-from-top-2 duration-150">
+                      <div className="absolute right-0 mt-1.5 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] py-1.5 z-[100] animate-in fade-in slide-in-from-top-2 duration-150 font-sans">
                         <div className="px-2.5 py-1 text-[9px] font-bold text-zinc-500 tracking-wider uppercase border-b border-zinc-800/50 mb-1">
                           Select Preset
                         </div>
@@ -879,69 +879,85 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="flex-grow flex-1 flex justify-around items-center pb-2 overflow-x-auto min-h-0">
-                {/* EQ Section */}
-                <SliderGroup 
-                  title="EQ / TONE" 
-                  isBypassed={bypassState.eq} 
-                  onBypassToggle={() => toggleBypass('eq')} 
-                  onReset={() => resetSection('eq')}
-                >
-                  <Knob label="Bass" value={params.eqBass} min={-24} max={24} defaultValue={0} color="orange" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqBass')} />
-                  <Knob label="Deep" value={params.eqDeep} min={-24} max={24} defaultValue={0} color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqDeep')} />
-                  <Knob label="Mid" value={params.eqMid} min={-24} max={24} defaultValue={0} color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqMid')} />
-                </SliderGroup>
+              <div className="flex-grow flex-1 flex flex-col justify-around py-2 min-h-0 gap-4">
+                {/* ROW 1: EQ & Dynamics */}
+                <div className="flex flex-row justify-around items-center w-full">
+                  {/* EQ Section */}
+                  <div className="flex-1 flex justify-center">
+                    <SliderGroup 
+                      title="EQ / TONE" 
+                      isBypassed={bypassState.eq} 
+                      onBypassToggle={() => toggleBypass('eq')} 
+                      onReset={() => resetSection('eq')}
+                    >
+                      <Knob label="Bass" value={params.eqBass} min={-24} max={24} defaultValue={0} color="orange" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqBass')} />
+                      <Knob label="Deep" value={params.eqDeep} min={-24} max={24} defaultValue={0} color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqDeep')} />
+                      <Knob label="Mid" value={params.eqMid} min={-24} max={24} defaultValue={0} color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqMid')} />
+                    </SliderGroup>
+                  </div>
 
-                <div className="w-px h-full bg-zinc-800 mx-4"></div>
+                  <div className="w-px h-28 bg-zinc-800/60 mx-4"></div>
 
-                {/* Dynamics Section */}
-                <SliderGroup 
-                  title="DYNAMICS" 
-                  isBypassed={bypassState.dynamics} 
-                  onBypassToggle={() => toggleBypass('dynamics')} 
-                  onReset={() => resetSection('dynamics')}
-                >
-                  <Knob label="Comp" value={params.compThreshold} min={-60} max={0} defaultValue={-24} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compThreshold')} />
-                  <Knob label="Ratio" value={params.compRatio} min={1} max={20} step={0.1} defaultValue={3} color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compRatio')} />
-                  <Knob label="Limit" value={params.limitCeiling} min={-24} max={0} step={0.1} defaultValue={-0.1} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'limitCeiling')} />
-                </SliderGroup>
+                  {/* Dynamics Section */}
+                  <div className="flex-1 flex justify-center">
+                    <SliderGroup 
+                      title="DYNAMICS" 
+                      isBypassed={bypassState.dynamics} 
+                      onBypassToggle={() => toggleBypass('dynamics')} 
+                      onReset={() => resetSection('dynamics')}
+                    >
+                      <Knob label="Comp" value={params.compThreshold} min={-60} max={0} defaultValue={-24} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compThreshold')} />
+                      <Knob label="Ratio" value={params.compRatio} min={1} max={20} step={0.1} defaultValue={3} color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compRatio')} />
+                      <Knob label="Limit" value={params.limitCeiling} min={-24} max={0} step={0.1} defaultValue={-0.1} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'limitCeiling')} />
+                    </SliderGroup>
+                  </div>
+                </div>
 
-                <div className="w-px h-full bg-zinc-800 mx-4"></div>
+                <div className="h-px w-full bg-zinc-800/40 my-1"></div>
 
-                {/* Saturation Color Section */}
-                <SliderGroup 
-                  title="COLOR / TONE" 
-                  isBypassed={bypassState.color} 
-                  onBypassToggle={() => toggleBypass('color')} 
-                  onReset={() => resetSection('color')}
-                >
-                  <Knob label="Drive" value={params.saturation} min={0} max={100} defaultValue={0} unit="%" color="gold" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'saturation')} />
-                </SliderGroup>
+                {/* ROW 2: Color, Space & Master */}
+                <div className="flex flex-row justify-around items-center w-full">
+                  {/* Saturation Color Section */}
+                  <div className="flex-1 flex justify-center">
+                    <SliderGroup 
+                      title="COLOR / TONE" 
+                      isBypassed={bypassState.color} 
+                      onBypassToggle={() => toggleBypass('color')} 
+                      onReset={() => resetSection('color')}
+                    >
+                      <Knob label="Drive" value={params.saturation} min={0} max={100} defaultValue={0} unit="%" color="gold" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'saturation')} />
+                    </SliderGroup>
+                  </div>
 
-                <div className="w-px h-full bg-zinc-800 mx-4"></div>
+                  <div className="w-px h-28 bg-zinc-800/60 mx-4"></div>
 
-                {/* Space / Mono Section */}
-                <SliderGroup 
-                  title="SPACE / MONO" 
-                  isBypassed={bypassState.space} 
-                  onBypassToggle={() => toggleBypass('space')} 
-                  onReset={() => resetSection('space')}
-                >
-                  <Knob label="Width" value={params.stereoWidth} min={0} max={200} defaultValue={100} unit="%" color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'stereoWidth')} />
-                  <Knob label="Verb" value={params.reverb} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'reverb')} />
-                  <Knob label="Echo" value={params.echo} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'echo')} />
-                </SliderGroup>
+                  {/* Space / Mono Section */}
+                  <div className="flex-1 flex justify-center">
+                    <SliderGroup 
+                      title="SPACE / MONO" 
+                      isBypassed={bypassState.space} 
+                      onBypassToggle={() => toggleBypass('space')} 
+                      onReset={() => resetSection('space')}
+                    >
+                      <Knob label="Width" value={params.stereoWidth} min={0} max={200} defaultValue={100} unit="%" color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'stereoWidth')} />
+                      <Knob label="Verb" value={params.reverb} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'reverb')} />
+                      <Knob label="Echo" value={params.echo} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'echo')} />
+                    </SliderGroup>
+                  </div>
 
-                <div className="w-px h-full bg-zinc-800 mx-4"></div>
-                
-                {/* Master */}
-                <SliderGroup 
-                  title="MASTER" 
-                  showBypass={false} 
-                  onReset={() => resetSection('master')}
-                >
-                  <Knob label="Gain" value={params.gain} min={-24} max={24} defaultValue={6} unit="dB" color="rose" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'gain')} />
-                </SliderGroup>
+                  <div className="w-px h-28 bg-zinc-800/60 mx-4"></div>
+                  
+                  {/* Master */}
+                  <div className="flex-1 flex justify-center">
+                    <SliderGroup 
+                      title="MASTER" 
+                      showBypass={false} 
+                      onReset={() => resetSection('master')}
+                    >
+                      <Knob label="Gain" value={params.gain} min={-24} max={24} defaultValue={6} unit="dB" color="rose" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'gain')} />
+                    </SliderGroup>
+                  </div>
+                </div>
               </div>
             </div>
           )}
