@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { 
+  Music,
   History, 
   HelpCircle, 
   ChevronLeft, 
@@ -8,7 +9,8 @@ import {
   Clock, 
   Keyboard 
 } from 'lucide-react';
-import Equalizer10Band from './Equalizer10Band';
+import { presets } from '../audioEngine';
+import { eq10Presets } from './Equalizer10Band';
 
 export interface HistoryRecord {
   id: string;
@@ -19,33 +21,31 @@ export interface HistoryRecord {
 }
 
 interface LeftSidebarProps {
-  eqValues: number[];
-  isEqBypassed: boolean;
-  onEqBypassToggle: () => void;
-  onEqReset: () => void;
-  onEqChange: (value: number, index: number) => void;
-  eqPresetName: string;
+  activeTab: 'eq' | 'console' | 'history' | 'help';
+  onTabChange: (tab: 'eq' | 'console' | 'history' | 'help') => void;
+  currentGlobalPreset: string;
+  onGlobalPresetSelect: (name: string) => void;
+  currentEqPreset: string;
   onEqPresetSelect: (name: string) => void;
   history: HistoryRecord[];
   onClearHistory: () => void;
 }
 
 export default function LeftSidebar({
-  eqValues,
-  isEqBypassed,
-  onEqBypassToggle,
-  onEqReset,
-  onEqChange,
-  eqPresetName,
+  activeTab,
+  onTabChange,
+  currentGlobalPreset,
+  onGlobalPresetSelect,
+  currentEqPreset,
   onEqPresetSelect,
   history,
   onClearHistory,
 }: LeftSidebarProps) {
   const [isOpen, setIsOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<'eq' | 'history' | 'help'>('eq');
 
   const tabs = [
     { id: 'eq' as const, label: '10-Band EQ', icon: Sliders },
+    { id: 'console' as const, label: 'Mastering Console', icon: Music },
     { id: 'history' as const, label: 'Mastering Logs', icon: History },
     { id: 'help' as const, label: 'Help Center', icon: HelpCircle },
   ];
@@ -72,7 +72,7 @@ export default function LeftSidebar({
                 <button
                   key={id}
                   onClick={() => {
-                    setActiveTab(id);
+                    onTabChange(id);
                     setIsOpen(true);
                   }}
                   className={`w-full py-2.5 rounded-lg flex items-center justify-center transition-all cursor-pointer group/btn relative ${
@@ -111,7 +111,8 @@ export default function LeftSidebar({
           {/* Tab Header title */}
           <div className="border-b border-zinc-800 pb-3 mb-4 shrink-0 flex justify-between items-center">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">
-              {activeTab === 'eq' && '10-Band Graphic EQ'}
+              {activeTab === 'eq' && '10-Band EQ Presets'}
+              {activeTab === 'console' && 'Global Console Presets'}
               {activeTab === 'history' && 'Mastering Logs'}
               {activeTab === 'help' && 'Console Help'}
             </span>
@@ -128,30 +129,91 @@ export default function LeftSidebar({
           {/* Dynamic Tab Body */}
           <div className="flex-1 overflow-auto pr-1">
             
-            {/* TAB A: 10-Band EQ */}
+            {/* TAB A: 10-Band EQ Presets list */}
             {activeTab === 'eq' && (
-              <div className="h-full flex flex-col">
-                <Equalizer10Band
-                  values={eqValues}
-                  isBypassed={isEqBypassed}
-                  onBypassToggle={onEqBypassToggle}
-                  onReset={onEqReset}
-                  onChange={onEqChange}
-                  presetName={eqPresetName}
-                  onPresetSelect={onEqPresetSelect}
-                  isSidebar={true}
-                />
+              <div className="space-y-2.5">
+                {Object.keys(eq10Presets).map((p) => {
+                  const isCurrent = currentEqPreset === p;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => onEqPresetSelect(p)}
+                      className={`w-full text-left p-3 rounded-lg border transition-all duration-150 cursor-pointer relative group/card flex flex-col ${
+                        isCurrent 
+                          ? 'bg-amber-500/10 border-amber-500/40 shadow-[0_4px_12px_rgba(245,158,11,0.05)]' 
+                          : 'bg-zinc-950/40 border-zinc-800/80 hover:border-zinc-700/80 hover:bg-zinc-850/40'
+                      }`}
+                    >
+                      <span className={`text-xs font-bold transition-colors ${
+                        isCurrent ? 'text-amber-400' : 'text-zinc-200 group-hover/card:text-white'
+                      }`}>
+                        {p}
+                      </span>
+                      <span className="text-[9px] text-zinc-500 mt-1 leading-tight font-sans">
+                        {p === 'Flat' && 'Linear response with zero decibel attenuation across all bands.'}
+                        {p === 'Bass Boost' && 'Heavy, punchy boost in the sub-bass and low frequencies.'}
+                        {p === 'Vocal Clarity' && 'Slight low roll-off with prominent high-mid presence boost.'}
+                        {p === 'Loudness (Smile)' && 'Scooped mids with elevated bass and sparkling highs.'}
+                        {p === 'Mid Scoop' && 'Attenuates core mid-ranges to create wider headroom.'}
+                        {p === 'Classic Rock' && 'Warm low-end, punchy low-mids, and sparkling treble presence.'}
+                      </span>
+                      
+                      {isCurrent && (
+                        <div className="absolute right-3 top-3 w-1.5 h-1.5 rounded-full bg-amber-500 drop-shadow-[0_0_3px_#f59e0b]"></div>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
 
-            {/* TAB B: Session logs history */}
+            {/* TAB B: Global Mastering Presets list */}
+            {activeTab === 'console' && (
+              <div className="space-y-2.5">
+                {Object.keys(presets).map((p) => {
+                  const isCurrent = currentGlobalPreset === p;
+                  return (
+                    <button
+                      key={p}
+                      onClick={() => onGlobalPresetSelect(p)}
+                      className={`w-full text-left p-3 rounded-lg border transition-all duration-150 cursor-pointer relative group/card flex flex-col ${
+                        isCurrent 
+                          ? 'bg-amber-500/10 border-amber-500/40 shadow-[0_4px_12px_rgba(245,158,11,0.05)]' 
+                          : 'bg-zinc-950/40 border-zinc-800/80 hover:border-zinc-700/80 hover:bg-zinc-850/40'
+                      }`}
+                    >
+                      <span className={`text-xs font-bold transition-colors ${
+                        isCurrent ? 'text-amber-400' : 'text-zinc-200 group-hover/card:text-white'
+                      }`}>
+                        {p}
+                      </span>
+                      <span className="text-[9px] text-zinc-500 mt-1 leading-tight font-sans">
+                        {p === 'Default' && 'Flat, clean profile with linear response.'}
+                        {p === 'EDM Punch' && 'Aggressive compression and prominent bass boost.'}
+                        {p === 'Vocal Pop' && 'Vocal presence boost with spatial expansion.'}
+                        {p === 'Lo-Fi Vintage' && 'Warm saturation, rolled-off highs, and organic echo.'}
+                        {p === 'Acoustic Warmth' && 'Subdued compression with mild room reverb.'}
+                        {p === 'Podcast Polish' && 'Tight mid control and streaming standard loudness.'}
+                        {p === 'AI Mastered' && '✦ Custom matching response calculated by Auto-Master.'}
+                      </span>
+                      
+                      {isCurrent && (
+                        <div className="absolute right-3 top-3 w-1.5 h-1.5 rounded-full bg-amber-500 drop-shadow-[0_0_3px_#f59e0b]"></div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* TAB C: Session logs history */}
             {activeTab === 'history' && (
               <div className="h-full">
                 {history.length === 0 ? (
                   <div className="h-[200px] flex flex-col items-center justify-center text-center text-zinc-500 border border-dashed border-zinc-800 rounded-lg p-4">
                     <Clock size={20} className="text-zinc-600 mb-1.5" />
                     <span className="text-[10px] font-bold uppercase tracking-wider">No Logs Available</span>
-                    <p className="text-[9px] text-zinc-600 mt-1 leading-normal">Your exported tracks will appear here in real-time.</p>
+                    <p className="text-[9px] text-zinc-600 mt-1 leading-normal font-sans">Your exported tracks will appear here in real-time.</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
@@ -170,9 +232,9 @@ export default function LeftSidebar({
               </div>
             )}
 
-            {/* TAB C: Documentation help */}
+            {/* TAB D: Documentation help */}
             {activeTab === 'help' && (
-              <div className="space-y-3.5 pb-2 text-[10px] text-zinc-400 leading-normal">
+              <div className="space-y-3.5 pb-2 text-[10px] text-zinc-400 leading-normal font-sans">
                 {/* Dial Controls card */}
                 <div className="p-3 bg-zinc-950/40 border border-zinc-850 rounded-lg flex flex-col gap-2">
                   <div className="flex items-center gap-1.5 font-bold text-zinc-200">

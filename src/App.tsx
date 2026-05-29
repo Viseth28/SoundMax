@@ -7,7 +7,7 @@ import { encodeFLAC } from './flacEncoder';
 import { calculateAutoMaster } from './autoMaster';
 import { exportIndividualVideo, exportAlbumVideo, isWebCodecsSupported } from './videoExport';
 import Knob from './components/Knob';
-import { eq10Presets } from './components/Equalizer10Band';
+import Equalizer10Band, { eq10Presets } from './components/Equalizer10Band';
 import LeftSidebar, { type HistoryRecord } from './components/LeftSidebar';
 
 interface QueuedFile {
@@ -42,6 +42,17 @@ export default function App() {
   const savedParamsRef = useRef<AudioParameters>({ ...defaultParams });
   const presetRef = useRef<HTMLDivElement>(null);
   const [history, setHistory] = useState<HistoryRecord[]>([]);
+
+  // Workspace switching states
+  const [activeTab, setActiveTab] = useState<'eq' | 'console' | 'history' | 'help'>('console');
+  const [lastActivePanel, setLastActivePanel] = useState<'eq' | 'console'>('console');
+
+  const handleTabChange = (tab: 'eq' | 'console' | 'history' | 'help') => {
+    setActiveTab(tab);
+    if (tab === 'eq' || tab === 'console') {
+      setLastActivePanel(tab);
+    }
+  };
 
   // Click-outside listener for Preset Select Dropdown
   useEffect(() => {
@@ -771,12 +782,11 @@ export default function App() {
         
         {/* Left Sidebar */}
         <LeftSidebar 
-          eqValues={params.eq10 || [0,0,0,0,0,0,0,0,0,0]}
-          isEqBypassed={bypassState.eq10}
-          onEqBypassToggle={() => toggleBypass('eq10')}
-          onEqReset={() => resetSection('eq10')}
-          onEqChange={(val, idx) => handleSliderChange({ target: { value: String(val) } } as any, 'eq10', idx)}
-          eqPresetName={presetName10}
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          currentGlobalPreset={presetName}
+          onGlobalPresetSelect={handlePresetSelect}
+          currentEqPreset={presetName10}
           onEqPresetSelect={handlePresetSelect10}
           history={history}
           onClearHistory={() => setHistory([])}
@@ -791,139 +801,152 @@ export default function App() {
           {/* Spectrum Analyzer Panel */}
           <Visualizer analyser={analyserNode} />
 
-          {/* Settings Console (Bottom Panel) - Snug visual height fitted to knobs */}
-          <div className="h-[240px] shrink-0 bg-zinc-900 rounded-xl border border-zinc-800 flex flex-col p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)]">
-            <div className="flex justify-between items-center mb-6 shrink-0">
-              <h2 className="text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2">
-                <Settings size={16} /> MASTERING CONSOLE
-              </h2>
-              <div className="flex items-center gap-2">
-                <button onClick={handleAutoMaster} className="mr-2 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold tracking-wider rounded shadow-[0_0_10px_rgba(245,158,11,0.5)] flex items-center gap-1.5 transition-all">
-                  <Sparkles size={14} /> AUTO-MASTER
-                </button>
-                <div className="w-px h-6 bg-zinc-800 mx-2"></div>
-                <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider mr-1">Preset:</label>
-                
-                {/* Styled Custom Preset Selector */}
-                <div className="relative" ref={presetRef}>
-                  <button 
-                    onClick={() => setPresetOpen(!presetOpen)}
-                    className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 text-xs font-semibold text-zinc-200 rounded-lg px-3 py-1.5 outline-none hover:border-amber-500/50 hover:text-white transition-all shadow-sm min-w-[130px] justify-between cursor-pointer focus:ring-1 focus:ring-amber-500"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <Music size={12} className="text-amber-500" />
-                      <span className={presetName === "AI Mastered" ? "text-amber-400 font-bold" : ""}>{presetName}</span>
-                    </span>
-                    <ChevronDown size={12} className={`text-zinc-500 transition-transform duration-200 ${presetOpen ? 'rotate-180' : ''}`} />
+          {/* Conditional Control Panel Switcher */}
+          {activeTab === 'eq' || (activeTab !== 'console' && lastActivePanel === 'eq') ? (
+            <Equalizer10Band 
+              values={params.eq10 || [0,0,0,0,0,0,0,0,0,0]} 
+              isBypassed={bypassState.eq10}
+              onBypassToggle={() => toggleBypass('eq10')}
+              onReset={() => resetSection('eq10')}
+              onChange={(val, idx) => handleSliderChange({ target: { value: String(val) } } as any, 'eq10', idx)}
+              presetName={presetName10}
+              onPresetSelect={handlePresetSelect10}
+            />
+          ) : (
+            /* Settings Console (Bottom Panel) - Now flex-grow to occupy all vertical space beautifully */
+            <div className="flex-grow flex-1 flex flex-col bg-zinc-900 rounded-xl border border-zinc-800 p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)] select-none min-h-[240px]">
+              <div className="flex justify-between items-center mb-6 shrink-0">
+                <h2 className="text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2">
+                  <Settings size={16} /> MASTERING CONSOLE
+                </h2>
+                <div className="flex items-center gap-2">
+                  <button onClick={handleAutoMaster} className="mr-2 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold tracking-wider rounded shadow-[0_0_10px_rgba(245,158,11,0.5)] flex items-center gap-1.5 transition-all">
+                    <Sparkles size={14} /> AUTO-MASTER
                   </button>
+                  <div className="w-px h-6 bg-zinc-800 mx-2"></div>
+                  <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider mr-1">Preset:</label>
                   
-                  {presetOpen && (
-                    <div className="absolute right-0 mt-1.5 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] py-1.5 z-[100] animate-in fade-in slide-in-from-top-2 duration-150">
-                      <div className="px-2.5 py-1 text-[9px] font-bold text-zinc-500 tracking-wider uppercase border-b border-zinc-800/50 mb-1">
-                        Select Preset
-                      </div>
-                      <button
-                        onClick={() => {
-                          setPresetName("Custom");
-                          setPresetOpen(false);
-                        }}
-                        className="w-full text-left px-3 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 italic"
-                      >
-                        Custom
-                      </button>
-                      <button
-                        disabled
-                        className="w-full text-left px-3 py-1.5 text-xs text-amber-400/50 font-bold flex items-center gap-1 opacity-70 cursor-not-allowed"
-                      >
-                        AI Mastered ✦
-                      </button>
-                      {Object.keys(presets).map(p => (
+                  {/* Styled Custom Preset Selector */}
+                  <div className="relative" ref={presetRef}>
+                    <button 
+                      onClick={() => setPresetOpen(!presetOpen)}
+                      className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 text-xs font-semibold text-zinc-200 rounded-lg px-3 py-1.5 outline-none hover:border-amber-500/50 hover:text-white transition-all shadow-sm min-w-[130px] justify-between cursor-pointer focus:ring-1 focus:ring-amber-500"
+                    >
+                      <span className="flex items-center gap-1.5">
+                        <Music size={12} className="text-amber-500" />
+                        <span className={presetName === "AI Mastered" ? "text-amber-400 font-bold" : ""}>{presetName}</span>
+                      </span>
+                      <ChevronDown size={12} className={`text-zinc-500 transition-transform duration-200 ${presetOpen ? 'rotate-180' : ''}`} />
+                    </button>
+                    
+                    {presetOpen && (
+                      <div className="absolute right-0 mt-1.5 w-48 bg-zinc-900 border border-zinc-800 rounded-lg shadow-[0_10px_25px_rgba(0,0,0,0.5)] py-1.5 z-[100] animate-in fade-in slide-in-from-top-2 duration-150">
+                        <div className="px-2.5 py-1 text-[9px] font-bold text-zinc-500 tracking-wider uppercase border-b border-zinc-800/50 mb-1">
+                          Select Preset
+                        </div>
                         <button
-                          key={p}
                           onClick={() => {
-                            handlePresetSelect(p);
+                            setPresetName("Custom");
                             setPresetOpen(false);
                           }}
-                          className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between ${
-                            presetName === p 
-                              ? 'bg-amber-500/10 text-amber-400 font-semibold' 
-                              : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
-                          }`}
+                          className="w-full text-left px-3 py-1.5 text-xs text-zinc-400 hover:bg-zinc-800 hover:text-zinc-200 italic"
                         >
-                          {p}
+                          Custom
                         </button>
-                      ))}
-                    </div>
-                  )}
+                        <button
+                          disabled
+                          className="w-full text-left px-3 py-1.5 text-xs text-amber-400/50 font-bold flex items-center gap-1 opacity-70 cursor-not-allowed"
+                        >
+                          AI Mastered ✦
+                        </button>
+                        {Object.keys(presets).map(p => (
+                          <button
+                            key={p}
+                            onClick={() => {
+                              handlePresetSelect(p);
+                              setPresetOpen(false);
+                            }}
+                            className={`w-full text-left px-3 py-1.5 text-xs transition-colors flex items-center justify-between ${
+                              presetName === p 
+                                ? 'bg-amber-500/10 text-amber-400 font-semibold' 
+                                : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
+
+              <div className="flex-grow flex-1 flex justify-around items-center pb-2 overflow-x-auto min-h-0">
+                {/* EQ Section */}
+                <SliderGroup 
+                  title="EQ / TONE" 
+                  isBypassed={bypassState.eq} 
+                  onBypassToggle={() => toggleBypass('eq')} 
+                  onReset={() => resetSection('eq')}
+                >
+                  <Knob label="Bass" value={params.eqBass} min={-24} max={24} defaultValue={0} color="orange" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqBass')} />
+                  <Knob label="Deep" value={params.eqDeep} min={-24} max={24} defaultValue={0} color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqDeep')} />
+                  <Knob label="Mid" value={params.eqMid} min={-24} max={24} defaultValue={0} color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqMid')} />
+                </SliderGroup>
+
+                <div className="w-px h-full bg-zinc-800 mx-4"></div>
+
+                {/* Dynamics Section */}
+                <SliderGroup 
+                  title="DYNAMICS" 
+                  isBypassed={bypassState.dynamics} 
+                  onBypassToggle={() => toggleBypass('dynamics')} 
+                  onReset={() => resetSection('dynamics')}
+                >
+                  <Knob label="Comp" value={params.compThreshold} min={-60} max={0} defaultValue={-24} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compThreshold')} />
+                  <Knob label="Ratio" value={params.compRatio} min={1} max={20} step={0.1} defaultValue={3} color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compRatio')} />
+                  <Knob label="Limit" value={params.limitCeiling} min={-24} max={0} step={0.1} defaultValue={-0.1} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'limitCeiling')} />
+                </SliderGroup>
+
+                <div className="w-px h-full bg-zinc-800 mx-4"></div>
+
+                {/* Saturation Color Section */}
+                <SliderGroup 
+                  title="COLOR / TONE" 
+                  isBypassed={bypassState.color} 
+                  onBypassToggle={() => toggleBypass('color')} 
+                  onReset={() => resetSection('color')}
+                >
+                  <Knob label="Drive" value={params.saturation} min={0} max={100} defaultValue={0} unit="%" color="gold" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'saturation')} />
+                </SliderGroup>
+
+                <div className="w-px h-full bg-zinc-800 mx-4"></div>
+
+                {/* Space / Mono Section */}
+                <SliderGroup 
+                  title="SPACE / MONO" 
+                  isBypassed={bypassState.space} 
+                  onBypassToggle={() => toggleBypass('space')} 
+                  onReset={() => resetSection('space')}
+                >
+                  <Knob label="Width" value={params.stereoWidth} min={0} max={200} defaultValue={100} unit="%" color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'stereoWidth')} />
+                  <Knob label="Verb" value={params.reverb} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'reverb')} />
+                  <Knob label="Echo" value={params.echo} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'echo')} />
+                </SliderGroup>
+
+                <div className="w-px h-full bg-zinc-800 mx-4"></div>
+                
+                {/* Master */}
+                <SliderGroup 
+                  title="MASTER" 
+                  showBypass={false} 
+                  onReset={() => resetSection('master')}
+                >
+                  <Knob label="Gain" value={params.gain} min={-24} max={24} defaultValue={6} unit="dB" color="rose" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'gain')} />
+                </SliderGroup>
+              </div>
             </div>
-            
-            <div className="flex-1 flex justify-around items-center pb-2 overflow-x-auto min-h-0">
-              {/* EQ Section */}
-              <SliderGroup 
-                title="EQ / TONE" 
-                isBypassed={bypassState.eq} 
-                onBypassToggle={() => toggleBypass('eq')} 
-                onReset={() => resetSection('eq')}
-              >
-                <Knob label="Bass" value={params.eqBass} min={-24} max={24} defaultValue={0} color="orange" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqBass')} />
-                <Knob label="Deep" value={params.eqDeep} min={-24} max={24} defaultValue={0} color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqDeep')} />
-                <Knob label="Mid" value={params.eqMid} min={-24} max={24} defaultValue={0} color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'eqMid')} />
-              </SliderGroup>
-
-              <div className="w-px h-full bg-zinc-800 mx-4"></div>
-
-              {/* Dynamics Section */}
-              <SliderGroup 
-                title="DYNAMICS" 
-                isBypassed={bypassState.dynamics} 
-                onBypassToggle={() => toggleBypass('dynamics')} 
-                onReset={() => resetSection('dynamics')}
-              >
-                <Knob label="Comp" value={params.compThreshold} min={-60} max={0} defaultValue={-24} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compThreshold')} />
-                <Knob label="Ratio" value={params.compRatio} min={1} max={20} step={0.1} defaultValue={3} color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'compRatio')} />
-                <Knob label="Limit" value={params.limitCeiling} min={-24} max={0} step={0.1} defaultValue={-0.1} unit="dB" color="emerald" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'limitCeiling')} />
-              </SliderGroup>
-
-              <div className="w-px h-full bg-zinc-800 mx-4"></div>
-
-              {/* Saturation Color Section */}
-              <SliderGroup 
-                title="COLOR / TONE" 
-                isBypassed={bypassState.color} 
-                onBypassToggle={() => toggleBypass('color')} 
-                onReset={() => resetSection('color')}
-              >
-                <Knob label="Drive" value={params.saturation} min={0} max={100} defaultValue={0} unit="%" color="gold" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'saturation')} />
-              </SliderGroup>
-
-              <div className="w-px h-full bg-zinc-800 mx-4"></div>
-
-              {/* Space / Mono Section */}
-              <SliderGroup 
-                title="SPACE / MONO" 
-                isBypassed={bypassState.space} 
-                onBypassToggle={() => toggleBypass('space')} 
-                onReset={() => resetSection('space')}
-              >
-                <Knob label="Width" value={params.stereoWidth} min={0} max={200} defaultValue={100} unit="%" color="cyan" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'stereoWidth')} />
-                <Knob label="Verb" value={params.reverb} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'reverb')} />
-                <Knob label="Echo" value={params.echo} min={0} max={100} defaultValue={0} unit="%" color="purple" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'echo')} />
-              </SliderGroup>
-
-              <div className="w-px h-full bg-zinc-800 mx-4"></div>
-              
-              {/* Master */}
-              <SliderGroup 
-                title="MASTER" 
-                showBypass={false} 
-                onReset={() => resetSection('master')}
-              >
-                <Knob label="Gain" value={params.gain} min={-24} max={24} defaultValue={6} unit="dB" color="rose" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'gain')} />
-              </SliderGroup>
-            </div>
-          </div>
+          )}
         </div>
 
         {/* Right Column: Batch Queue Panel */}
