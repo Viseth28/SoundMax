@@ -1,22 +1,16 @@
 import { 
   Sliders, 
-  Music, 
-  History, 
-  HelpCircle 
+  Music 
 } from 'lucide-react';
 
 interface LeftSidebarProps {
   activePanel: 'eq' | 'master';
   onPanelChange: (panel: 'eq' | 'master') => void;
-  onOpenLogs: () => void;
-  onOpenHelp: () => void;
 }
 
 export default function LeftSidebar({
   activePanel,
   onPanelChange,
-  onOpenLogs,
-  onOpenHelp,
 }: LeftSidebarProps) {
   const menuItems = [
     { 
@@ -33,35 +27,11 @@ export default function LeftSidebar({
       action: () => onPanelChange('master'),
       isActive: activePanel === 'master'
     },
-    { 
-      id: 'logs' as const, 
-      label: 'Logs', 
-      icon: History,
-      action: onOpenLogs,
-      isActive: false
-    },
-    { 
-      id: 'help' as const, 
-      label: 'Help', 
-      icon: HelpCircle,
-      action: onOpenHelp,
-      isActive: false
-    },
   ];
 
   return (
     <div className="w-20 h-full bg-zinc-950 border-r border-zinc-900 flex flex-col justify-between items-center py-6 shrink-0 select-none">
-      {/* Top Section: Logo Badge */}
-      <div className="flex flex-col items-center gap-8 w-full">
-        <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center font-bold text-sm text-white shadow-[0_0_15px_rgba(245,158,11,0.4)]">
-          SM
-        </div>
-
-        {/* Menu Title */}
-        <span className="text-[9px] font-extrabold uppercase tracking-[0.2em] text-zinc-600 select-none">
-          Menu
-        </span>
-
+      <div className="flex flex-col items-center w-full">
         {/* Menu Buttons Stack */}
         <div className="flex flex-col gap-4 w-full px-2">
           {menuItems.map(({ id, label, icon: Icon, action, isActive }) => (
