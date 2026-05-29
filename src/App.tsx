@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Play, Pause, Settings, X, Download, Sparkles, Video, Volume2, VolumeX, Music, RotateCcw, Power, ChevronDown } from 'lucide-react';
+import { Upload, Play, Pause, Settings, X, Download, Sparkles, Video, Volume2, VolumeX, Music, RotateCcw, Power, ChevronDown, History as HistoryIcon, Clock, HelpCircle, Sliders, Keyboard } from 'lucide-react';
 import { AudioGraph, type AudioParameters, defaultParams, presets } from './audioEngine';
 import { encodeWAV } from './wavEncoder';
 import { encodeMP3 } from './mp3Encoder';
@@ -8,7 +8,15 @@ import { calculateAutoMaster } from './autoMaster';
 import { exportIndividualVideo, exportAlbumVideo, isWebCodecsSupported } from './videoExport';
 import Knob from './components/Knob';
 import Equalizer10Band, { eq10Presets } from './components/Equalizer10Band';
-import LeftSidebar, { type HistoryRecord } from './components/LeftSidebar';
+import LeftSidebar from './components/LeftSidebar';
+
+export interface HistoryRecord {
+  id: string;
+  name: string;
+  format: string;
+  timestamp: string;
+  sampleRate: number;
+}
 
 interface QueuedFile {
   id: string;
@@ -44,15 +52,9 @@ export default function App() {
   const [history, setHistory] = useState<HistoryRecord[]>([]);
 
   // Workspace switching states
-  const [activeTab, setActiveTab] = useState<'eq' | 'console' | 'history' | 'help'>('console');
-  const [lastActivePanel, setLastActivePanel] = useState<'eq' | 'console'>('console');
-
-  const handleTabChange = (tab: 'eq' | 'console' | 'history' | 'help') => {
-    setActiveTab(tab);
-    if (tab === 'eq' || tab === 'console') {
-      setLastActivePanel(tab);
-    }
-  };
+  const [activePanel, setActivePanel] = useState<'eq' | 'master'>('master');
+  const [showLogsModal, setShowLogsModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // Click-outside listener for Preset Select Dropdown
   useEffect(() => {
@@ -782,14 +784,10 @@ export default function App() {
         
         {/* Left Sidebar */}
         <LeftSidebar 
-          activeTab={activeTab}
-          onTabChange={handleTabChange}
-          currentGlobalPreset={presetName}
-          onGlobalPresetSelect={handlePresetSelect}
-          currentEqPreset={presetName10}
-          onEqPresetSelect={handlePresetSelect10}
-          history={history}
-          onClearHistory={() => setHistory([])}
+          activePanel={activePanel}
+          onPanelChange={setActivePanel}
+          onOpenLogs={() => setShowLogsModal(true)}
+          onOpenHelp={() => setShowHelpModal(true)}
         />
 
         {/* Dashboard Content Columns */}
@@ -802,7 +800,7 @@ export default function App() {
           <Visualizer analyser={analyserNode} />
 
           {/* Conditional Control Panel Switcher */}
-          {activeTab === 'eq' || (activeTab !== 'console' && lastActivePanel === 'eq') ? (
+          {activePanel === 'eq' ? (
             <Equalizer10Band 
               values={params.eq10 || [0,0,0,0,0,0,0,0,0,0]} 
               isBypassed={bypassState.eq10}
@@ -1257,6 +1255,126 @@ export default function App() {
               >
                 {isExportingVideo ? <Sparkles className="animate-spin" size={16} /> : <Video size={16} />}
                 {isExportingVideo ? 'Rendering...' : 'Render Video'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Mastering Logs Modal */}
+      {showLogsModal && (
+        <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-lg overflow-hidden shadow-2xl">
+            <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <HistoryIcon size={20} className="text-amber-500" />
+                Mastering History Logs
+              </h2>
+              <button onClick={() => setShowLogsModal(false)} className="text-zinc-400 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 max-h-[400px] overflow-y-auto">
+              {history.length === 0 ? (
+                <div className="h-[200px] flex flex-col items-center justify-center text-center text-zinc-500 border-2 border-dashed border-zinc-850 rounded-lg p-6">
+                  <Clock size={32} className="text-zinc-600 mb-2 opacity-50" />
+                  <span className="text-xs font-bold uppercase tracking-wider">No Logs Available</span>
+                  <p className="text-xs text-zinc-500 mt-1 font-sans">Exported tracks from the current session will be recorded here.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {history.map(item => (
+                    <div key={item.id} className="p-4 bg-zinc-950/50 border border-zinc-850 rounded-lg flex flex-col gap-1.5 relative">
+                      <span className="text-sm font-bold text-zinc-200 truncate pr-4">{item.name}</span>
+                      <div className="flex justify-between items-center mt-2 border-t border-zinc-900/40 pt-2 text-[10px] text-zinc-400 font-mono">
+                        <span>Format: <strong className="text-zinc-300">{item.format}</strong></span>
+                        <span>SR: <strong className="text-zinc-300">{item.sampleRate}Hz</strong></span>
+                        <span className="text-zinc-500">{item.timestamp}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <div className="px-6 py-4 bg-zinc-950 border-t border-zinc-800 flex justify-between items-center">
+              {history.length > 0 ? (
+                <button 
+                  onClick={() => setHistory([])}
+                  className="px-4 py-2 text-xs font-bold text-red-400 hover:text-red-300 bg-red-950/20 hover:bg-red-950/40 border border-red-900/30 rounded transition-all"
+                >
+                  Clear Logs
+                </button>
+              ) : <div />}
+              <button onClick={() => setShowLogsModal(false)} className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded border border-zinc-700/50 transition-all">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Console Help Modal */}
+      {showHelpModal && (
+        <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-xl overflow-hidden shadow-2xl">
+            <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50">
+              <h2 className="text-lg font-bold text-white flex items-center gap-2">
+                <HelpCircle size={20} className="text-amber-500" />
+                Console Help Center
+              </h2>
+              <button onClick={() => setShowHelpModal(false)} className="text-zinc-400 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="p-6 space-y-4 max-h-[400px] overflow-y-auto">
+              {/* Dial Controls card */}
+              <div className="p-4 bg-zinc-950/50 border border-zinc-850 rounded-lg flex flex-col gap-2">
+                <div className="flex items-center gap-2 font-bold text-zinc-200 text-xs">
+                  <Sliders size={14} className="text-amber-500" />
+                  <span>DIAL KNOB INTERACTION</span>
+                </div>
+                <ul className="list-disc pl-5 space-y-1 text-xs text-zinc-400">
+                  <li><strong className="text-zinc-300">Mouse Drag</strong>: Click and slide mouse vertically to rotate dials.</li>
+                  <li><strong className="text-zinc-300">Scroll Wheel</strong>: Hover dial and scroll to adjust values.</li>
+                  <li><strong className="text-zinc-300">Double Click</strong>: Instantly resets dial to its safety default.</li>
+                </ul>
+              </div>
+
+              {/* Keyboard nav card */}
+              <div className="p-4 bg-zinc-950/50 border border-zinc-850 rounded-lg flex flex-col gap-2">
+                <div className="flex items-center gap-2 font-bold text-zinc-200 text-xs font-sans">
+                  <Keyboard size={14} className="text-amber-500" />
+                  <span>KEYBOARD NAVIGATION</span>
+                </div>
+                <p className="text-xs text-zinc-400 font-sans">
+                  Click a dial knob to focus it. Focused controls display a glowing outer ring:
+                </p>
+                <ul className="list-disc pl-5 space-y-1 text-xs text-zinc-400 font-sans">
+                  <li><strong className="text-zinc-300">ArrowUp / ArrowRight</strong>: Rotate clockwise to increase values.</li>
+                  <li><strong className="text-zinc-300">ArrowDown / ArrowLeft</strong>: Rotate counter-clockwise to decrease.</li>
+                  <li><strong className="text-zinc-300">Shift + Arrow</strong>: Activate micro-tuning adjustments for exact values.</li>
+                </ul>
+              </div>
+
+              {/* Console card */}
+              <div className="p-4 bg-zinc-950/50 border border-zinc-850 rounded-lg flex flex-col gap-2 font-sans">
+                <div className="flex items-center gap-2 font-bold text-zinc-200 text-xs">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span>
+                  <span>SIGNAL FLOW CONTROLS</span>
+                </div>
+                <ul className="list-disc pl-5 space-y-1 text-xs text-zinc-400">
+                  <li><strong className="text-zinc-300">Bypass Power Switches</strong>: Use switches to clean-route signals past selected channels.</li>
+                  <li><strong className="text-zinc-300">Fader Decibel Ticks</strong>: Visual references to level fader sculpts precisely.</li>
+                </ul>
+              </div>
+            </div>
+            
+            <div className="px-6 py-4 bg-zinc-950 border-t border-zinc-800 flex justify-end">
+              <button onClick={() => setShowHelpModal(false)} className="px-6 py-2 bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold rounded border border-zinc-700/50 transition-all font-sans">
+                Close Help
               </button>
             </div>
           </div>
