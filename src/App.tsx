@@ -8,6 +8,7 @@ import { calculateAutoMaster } from './autoMaster';
 import { exportIndividualVideo, exportAlbumVideo, isWebCodecsSupported } from './videoExport';
 import Knob from './components/Knob';
 import Equalizer10Band, { eq10Presets } from './components/Equalizer10Band';
+import LeftSidebar, { type HistoryRecord } from './components/LeftSidebar';
 
 interface QueuedFile {
   id: string;
@@ -40,6 +41,7 @@ export default function App() {
   const [presetName10, setPresetName10] = useState("Flat");
   const savedParamsRef = useRef<AudioParameters>({ ...defaultParams });
   const presetRef = useRef<HTMLDivElement>(null);
+  const [history, setHistory] = useState<HistoryRecord[]>([]);
 
   // Click-outside listener for Preset Select Dropdown
   useEffect(() => {
@@ -721,9 +723,19 @@ export default function App() {
       a.download = `SOUNDMAX_${file.name.replace(/\.[^/.]+$/, "")}.${ext}`;
       a.click();
       URL.revokeObjectURL(url);
+
+      // Log exported file into Mastering History logs
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      const record: HistoryRecord = {
+        id: Math.random().toString(36).substring(7),
+        name: `SOUNDMAX_${file.name.replace(/\.[^/.]+$/, "")}.${ext}`,
+        format: exportConfig.format,
+        timestamp: timeStr,
+        sampleRate: exportConfig.sampleRate,
+      };
+      setHistory(prev => [record, ...prev]);
       
-      
-        setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Completed' } : f));
+      setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Completed' } : f));
       }
     } catch (error) {
       console.error("Export failed:", error);
@@ -755,10 +767,21 @@ export default function App() {
       </header>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-row p-6 overflow-hidden gap-6 h-[calc(100vh-5rem)]">
+      <div className="flex-1 flex flex-row overflow-hidden h-[calc(100vh-5rem)]">
         
-        {/* Left Column: Visualizer & Mastering Console */}
-        <div className="flex-1 flex flex-col gap-6 h-full min-w-0">
+        {/* Left Sidebar */}
+        <LeftSidebar 
+          currentPreset={presetName}
+          onPresetSelect={handlePresetSelect}
+          history={history}
+          onClearHistory={() => setHistory([])}
+        />
+
+        {/* Dashboard Content Columns */}
+        <div className="flex-1 flex flex-row p-6 overflow-hidden gap-6 h-full min-w-0">
+          
+          {/* Left Column: Visualizer & Mastering Console */}
+          <div className="flex-1 flex flex-col gap-6 h-full min-w-0">
           
           {/* Spectrum Analyzer Panel */}
           <Visualizer analyser={analyserNode} />
@@ -981,6 +1004,7 @@ export default function App() {
           </div>
         </div>
       </div>
+    </div>
 
       {/* Export Modal */}
       {showExportModal && (
