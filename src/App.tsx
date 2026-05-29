@@ -7,6 +7,7 @@ import { encodeFLAC } from './flacEncoder';
 import { calculateAutoMaster } from './autoMaster';
 import { exportIndividualVideo, exportAlbumVideo, isWebCodecsSupported } from './videoExport';
 import Knob from './components/Knob';
+import Equalizer10Band from './components/Equalizer10Band';
 
 interface QueuedFile {
   id: string;
@@ -30,6 +31,7 @@ export default function App() {
   // Custom states for bypasses, preset selector & section resets
   const [bypassState, setBypassState] = useState({
     eq: false,
+    eq10: false,
     dynamics: false,
     color: false,
     space: false,
@@ -463,27 +465,45 @@ export default function App() {
 
   const SECTION_PARAMS = {
     eq: ['eqBass', 'eqDeep', 'eqMid'] as const,
+    eq10: ['eq10'] as const,
     dynamics: ['compThreshold', 'compRatio', 'limitCeiling'] as const,
     color: ['saturation'] as const,
     space: ['stereoWidth', 'reverb', 'echo'] as const,
   };
 
-  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>, key: keyof AudioParameters) => {
+  const handleSliderChange = (e: React.ChangeEvent<HTMLInputElement>, key: keyof AudioParameters, index?: number) => {
     const val = parseFloat(e.target.value);
-    setParams(prev => ({ ...prev, [key]: val }));
+    
+    setParams(prev => {
+      const next = { ...prev };
+      if (key === 'eq10' && typeof index === 'number') {
+        const nextEq10 = [...(prev.eq10 || [0,0,0,0,0,0,0,0,0,0])];
+        nextEq10[index] = val;
+        next.eq10 = nextEq10;
+      } else {
+        next[key] = val as any;
+      }
+      return next;
+    });
     
     // Also save the change to savedParamsRef if that section is not bypassed
-    Object.entries(SECTION_PARAMS).forEach(([sec, keys]) => {
-      if ((keys as readonly string[]).includes(key)) {
-        const isBypassed = bypassState[sec as keyof typeof bypassState];
-        if (!isBypassed) {
-          savedParamsRef.current[key] = val as any;
-        }
+    if (key === 'eq10' && typeof index === 'number') {
+      if (!bypassState.eq10) {
+        savedParamsRef.current.eq10[index] = val;
       }
-    });
-    // Master gain is never bypassed, save it directly
-    if (key === 'gain') {
-      savedParamsRef.current.gain = val;
+    } else {
+      Object.entries(SECTION_PARAMS).forEach(([sec, keys]) => {
+        if ((keys as readonly string[]).includes(key)) {
+          const isBypassed = bypassState[sec as keyof typeof bypassState];
+          if (!isBypassed) {
+            savedParamsRef.current[key] = val as any;
+          }
+        }
+      });
+      // Master gain is never bypassed, save it directly
+      if (key === 'gain') {
+        savedParamsRef.current.gain = val;
+      }
     }
     
     setPresetName("Custom");
@@ -493,17 +513,28 @@ export default function App() {
     setPresetName(name);
     if (presets[name]) {
       const newPreset = presets[name];
-      savedParamsRef.current = { ...newPreset };
+      savedParamsRef.current = { 
+        ...newPreset,
+        eq10: newPreset.eq10 ? [...newPreset.eq10] : [0,0,0,0,0,0,0,0,0,0]
+      };
       
       setParams(prev => {
         const next = { ...prev };
         Object.entries(SECTION_PARAMS).forEach(([sec, keys]) => {
           const isBypassed = bypassState[sec as keyof typeof bypassState];
           keys.forEach(k => {
-            if (!isBypassed) {
-              next[k] = newPreset[k] as any;
+            if (k === 'eq10') {
+              if (!isBypassed) {
+                next.eq10 = newPreset.eq10 ? [...newPreset.eq10] : [0,0,0,0,0,0,0,0,0,0];
+              } else {
+                next.eq10 = [0,0,0,0,0,0,0,0,0,0];
+              }
             } else {
-              next[k] = defaultParams[k] as any;
+              if (!isBypassed) {
+                next[k] = newPreset[k] as any;
+              } else {
+                next[k] = defaultParams[k] as any;
+              }
             }
           });
         });
@@ -526,17 +557,29 @@ export default function App() {
     }
 
     const optimalParams = calculateAutoMaster(activeFile.buffer);
-    savedParamsRef.current = { ...optimalParams };
+    const autoEq10 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+    savedParamsRef.current = { 
+      ...optimalParams,
+      eq10: autoEq10
+    };
     
     setParams(prev => {
       const next = { ...prev };
       Object.entries(SECTION_PARAMS).forEach(([sec, keys]) => {
         const isBypassed = bypassState[sec as keyof typeof bypassState];
         keys.forEach(k => {
-          if (!isBypassed) {
-            next[k] = optimalParams[k] as any;
+          if (k === 'eq10') {
+            if (!isBypassed) {
+              next.eq10 = [...autoEq10];
+            } else {
+              next.eq10 = [0,0,0,0,0,0,0,0,0,0];
+            }
           } else {
-            next[k] = defaultParams[k] as any;
+            if (!isBypassed) {
+              next[k] = optimalParams[k] as any;
+            } else {
+              next[k] = defaultParams[k] as any;
+            }
           }
         });
       });
@@ -557,14 +600,23 @@ export default function App() {
         if (isBypassing) {
           // Save current values to savedRef
           paramKeys.forEach(k => {
-            savedParamsRef.current[k] = currentParams[k] as any;
-            // Set params in audioEngine to their clean default values
-            nextParams[k] = defaultParams[k] as any;
+            if (k === 'eq10') {
+              savedParamsRef.current.eq10 = [...(currentParams.eq10 || [0,0,0,0,0,0,0,0,0,0])];
+              nextParams.eq10 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+            } else {
+              savedParamsRef.current[k] = currentParams[k] as any;
+              // Set params in audioEngine to their clean default values
+              nextParams[k] = defaultParams[k] as any;
+            }
           });
         } else {
           // Restore from savedRef
           paramKeys.forEach(k => {
-            nextParams[k] = savedParamsRef.current[k] as any;
+            if (k === 'eq10') {
+              nextParams.eq10 = [...(savedParamsRef.current.eq10 || [0,0,0,0,0,0,0,0,0,0])];
+            } else {
+              nextParams[k] = savedParamsRef.current[k] as any;
+            }
           });
         }
         return nextParams;
@@ -583,10 +635,15 @@ export default function App() {
       setParams(prev => {
         const next = { ...prev };
         paramKeys.forEach(k => {
-          // If bypassed, keep it at default in params; if active, update it to default
-          next[k] = defaultParams[k] as any;
-          // Set standard saved value to default
-          savedParamsRef.current[k] = defaultParams[k] as any;
+          if (k === 'eq10') {
+            next.eq10 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+            savedParamsRef.current.eq10 = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
+          } else {
+            // If bypassed, keep it at default in params; if active, update it to default
+            next[k] = defaultParams[k] as any;
+            // Set standard saved value to default
+            savedParamsRef.current[k] = defaultParams[k] as any;
+          }
         });
         return next;
       });
@@ -692,6 +749,15 @@ export default function App() {
           
           {/* Spectrum Analyzer Panel */}
           <Visualizer analyser={analyserNode} />
+
+          {/* 10-Band Graphic Equalizer Faders Card */}
+          <Equalizer10Band 
+            values={params.eq10 || [0,0,0,0,0,0,0,0,0,0]} 
+            isBypassed={bypassState.eq10}
+            onBypassToggle={() => toggleBypass('eq10')}
+            onReset={() => resetSection('eq10')}
+            onChange={(val, idx) => handleSliderChange({ target: { value: String(val) } } as any, 'eq10', idx)}
+          />
 
           {/* Settings Console (Bottom Panel) - Snug visual height fitted to knobs */}
           <div className="h-[240px] shrink-0 bg-zinc-900 rounded-xl border border-zinc-800 flex flex-col p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)]">

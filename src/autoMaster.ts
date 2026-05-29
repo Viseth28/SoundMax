@@ -50,6 +50,7 @@ export function calculateAutoMaster(buffer: AudioBuffer): AudioParameters {
     eqBass: Math.round(eqBass * 10) / 10,
     eqDeep: Math.round(eqDeep * 10) / 10,
     eqMid: Math.round(eqMid * 10) / 10,
+    eq10: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
     compThreshold: Math.round(compThreshold * 10) / 10,
     compRatio: Math.round(compRatio * 10) / 10,
     limitCeiling: -0.3,

@@ -2,6 +2,7 @@ export interface AudioParameters {
   eqBass: number; // -24 to 24 dB
   eqDeep: number; // -24 to 24 dB
   eqMid: number; // -24 to 24 dB
+  eq10: number[]; // Array of 10 fader values (-12 to +12 dB)
   compThreshold: number; // -60 to 0 dB
   compRatio: number; // 1 to 20
   limitCeiling: number; // -24 to 0 dB
@@ -16,6 +17,7 @@ export const defaultParams: AudioParameters = {
   eqBass: 0,
   eqDeep: 0,
   eqMid: 0,
+  eq10: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
   compThreshold: -24,
   compRatio: 3,
   limitCeiling: -0.1,
@@ -55,6 +57,7 @@ export class AudioGraph {
     bassEQ: BiquadFilterNode;
     deepEQ: BiquadFilterNode;
     midEQ: BiquadFilterNode;
+    eq10Filters: BiquadFilterNode[];
     saturation: WaveShaperNode;
     compressor: DynamicsCompressorNode;
     echoDelay: DelayNode;
@@ -88,6 +91,17 @@ export class AudioGraph {
     midEQ.type = 'peaking';
     midEQ.frequency.value = 1000;
     midEQ.Q.value = 1;
+
+    // Create 10 graphic EQ peaking filters (standard ISO octave bands)
+    const eq10Frequencies = [31, 62, 125, 250, 500, 1000, 2000, 4000, 8000, 16000];
+    const eq10Filters = eq10Frequencies.map(freq => {
+      const filter = this.ctx.createBiquadFilter();
+      filter.type = 'peaking';
+      filter.frequency.value = freq;
+      filter.Q.value = 1.414; // Standard Q for octave bandwidth
+      filter.gain.value = 0; // default flat response
+      return filter;
+    });
 
     const saturation = this.ctx.createWaveShaper();
     saturation.curve = makeDistortionCurve(0);
@@ -133,7 +147,15 @@ export class AudioGraph {
     // Wiring Main Chain
     bassEQ.connect(deepEQ);
     deepEQ.connect(midEQ);
-    midEQ.connect(saturation);
+    
+    // Connect 10-band filters in series
+    let lastNode: AudioNode = midEQ;
+    eq10Filters.forEach(filter => {
+      lastNode.connect(filter);
+      lastNode = filter;
+    });
+    
+    lastNode.connect(saturation);
     saturation.connect(compressor);
     
     // Split for parallel FX
@@ -158,7 +180,7 @@ export class AudioGraph {
     analyser.connect(this.ctx.destination);
 
     this.nodes = {
-      bassEQ, deepEQ, midEQ, saturation, compressor, 
+      bassEQ, deepEQ, midEQ, eq10Filters, saturation, compressor, 
       echoDelay, echoFeedback, echoGain, reverbGain,
       stereoPanner, limiter, masterGain, analyser
     };
@@ -168,6 +190,16 @@ export class AudioGraph {
     this.nodes.bassEQ.gain.value = params.eqBass;
     this.nodes.deepEQ.gain.value = params.eqDeep;
     this.nodes.midEQ.gain.value = params.eqMid;
+    
+    // Map 10-band EQ parameters
+    if (params.eq10) {
+      params.eq10.forEach((val, idx) => {
+        if (this.nodes.eq10Filters && this.nodes.eq10Filters[idx]) {
+          this.nodes.eq10Filters[idx].gain.value = val;
+        }
+      });
+    }
+
     this.nodes.saturation.curve = makeDistortionCurve(params.saturation * 4); // 0-100 scale to 0-400
     this.nodes.compressor.threshold.value = params.compThreshold;
     this.nodes.compressor.ratio.value = params.compRatio;
