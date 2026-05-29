@@ -1,12 +1,13 @@
 import { 
   Sliders, 
   Music,
+  Brain,
   Settings
 } from 'lucide-react';
 
 interface LeftSidebarProps {
-  activePanel: 'eq' | 'master';
-  onPanelChange: (panel: 'eq' | 'master') => void;
+  activePanel: 'eq' | 'master' | 'ai';
+  onPanelChange: (panel: 'eq' | 'master' | 'ai') => void;
   onOpenSettings: () => void;
   language?: 'en' | 'kh';
 }
@@ -31,6 +32,13 @@ export default function LeftSidebar({
       icon: Music,
       action: () => onPanelChange('master'),
       isActive: activePanel === 'master'
+    },
+    { 
+      id: 'ai' as const, 
+      label: 'AI Detect', 
+      icon: Brain,
+      action: () => onPanelChange('ai'),
+      isActive: activePanel === 'ai'
     },
   ];
 
