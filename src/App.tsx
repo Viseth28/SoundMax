@@ -7,7 +7,7 @@ import { encodeFLAC } from './flacEncoder';
 import { calculateAutoMaster } from './autoMaster';
 import { exportIndividualVideo, exportAlbumVideo, isWebCodecsSupported } from './videoExport';
 import Knob from './components/Knob';
-import Equalizer10Band from './components/Equalizer10Band';
+import Equalizer10Band, { eq10Presets } from './components/Equalizer10Band';
 
 interface QueuedFile {
   id: string;
@@ -37,6 +37,7 @@ export default function App() {
     space: false,
   });
   const [presetOpen, setPresetOpen] = useState(false);
+  const [presetName10, setPresetName10] = useState("Flat");
   const savedParamsRef = useRef<AudioParameters>({ ...defaultParams });
   const presetRef = useRef<HTMLDivElement>(null);
 
@@ -491,6 +492,7 @@ export default function App() {
       if (!bypassState.eq10) {
         savedParamsRef.current.eq10[index] = val;
       }
+      setPresetName10("Custom");
     } else {
       Object.entries(SECTION_PARAMS).forEach(([sec, keys]) => {
         if ((keys as readonly string[]).includes(key)) {
@@ -504,9 +506,20 @@ export default function App() {
       if (key === 'gain') {
         savedParamsRef.current.gain = val;
       }
+      setPresetName("Custom");
     }
-    
-    setPresetName("Custom");
+  };
+
+  const handlePresetSelect10 = (name: string) => {
+    setPresetName10(name);
+    if (eq10Presets[name]) {
+      const nextEq = [...eq10Presets[name]];
+      savedParamsRef.current.eq10 = [...nextEq];
+      setParams(prev => ({
+        ...prev,
+        eq10: bypassState.eq10 ? [0,0,0,0,0,0,0,0,0,0] : [...nextEq]
+      }));
+    }
   };
 
   const handlePresetSelect = (name: string) => {
@@ -757,6 +770,8 @@ export default function App() {
             onBypassToggle={() => toggleBypass('eq10')}
             onReset={() => resetSection('eq10')}
             onChange={(val, idx) => handleSliderChange({ target: { value: String(val) } } as any, 'eq10', idx)}
+            presetName={presetName10}
+            onPresetSelect={handlePresetSelect10}
           />
 
           {/* Settings Console (Bottom Panel) - Snug visual height fitted to knobs */}

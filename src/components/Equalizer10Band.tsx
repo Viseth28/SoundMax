@@ -1,5 +1,14 @@
-import { useState } from 'react';
-import { RotateCcw, Power } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { RotateCcw, Power, ChevronDown, Music } from 'lucide-react';
+
+export const eq10Presets: Record<string, number[]> = {
+  "Flat": [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  "Bass Boost": [5, 4, 3, 1.5, 0, 0, 0, 0, 0, 0],
+  "Vocal Clarity": [-2, -1, 0, 1, 2, 3, 3, 2, 1, 0],
+  "Loudness (Smile)": [4, 3, 1, -1, -2, -2, -1, 1, 3, 4],
+  "Mid Scoop": [1, 2, 1, -2, -4, -4, -2, 1, 2, 1],
+  "Classic Rock": [3, 2, 1.5, 1, -0.5, -1, 0, 1.5, 2.5, 3],
+};
 
 interface Equalizer10BandProps {
   values: number[]; // Array of 10 values (-12 to +12 dB)
@@ -7,6 +16,8 @@ interface Equalizer10BandProps {
   onBypassToggle: () => void;
   onReset: () => void;
   onChange: (value: number, index: number) => void;
+  presetName: string;
+  onPresetSelect: (name: string) => void;
 }
 
 export default function Equalizer10Band({
@@ -15,6 +26,8 @@ export default function Equalizer10Band({
   onBypassToggle,
   onReset,
   onChange,
+  presetName,
+  onPresetSelect,
 }: Equalizer10BandProps) {
   const frequencies = [
     { label: '31', unit: 'Hz' },
@@ -30,7 +43,20 @@ export default function Equalizer10Band({
   ];
 
   const [isSpinning, setIsSpinning] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   const handleResetClick = () => {
     setIsSpinning(true);
@@ -47,8 +73,48 @@ export default function Equalizer10Band({
           10-BAND GRAPHIC EQUALIZER
         </h2>
         
-        {/* Bypass and Reset Controls */}
-        <div className="flex items-center gap-3">
+        {/* Bypass, Preset and Reset Controls */}
+        <div className="flex items-center gap-2.5">
+          {/* Preset Selector Dropdown inside Equalizer Header */}
+          <div className="relative" ref={dropdownRef}>
+            <button 
+              onClick={() => !isBypassed && setDropdownOpen(!dropdownOpen)}
+              disabled={isBypassed}
+              className={`flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 text-[10px] font-bold text-zinc-300 rounded px-2.5 py-1 outline-none min-w-[100px] justify-between transition-all select-none ${
+                isBypassed 
+                  ? 'opacity-40 cursor-not-allowed border-zinc-900' 
+                  : 'hover:border-zinc-700 hover:text-white cursor-pointer'
+              }`}
+            >
+              <span className="flex items-center gap-1">
+                <Music size={10} className="text-amber-500" />
+                <span className={presetName === "Custom" ? "italic text-zinc-500" : "text-zinc-200"}>{presetName}</span>
+              </span>
+              <ChevronDown size={10} className={`text-zinc-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+            </button>
+            
+            {dropdownOpen && !isBypassed && (
+              <div className="absolute right-0 mt-1 w-36 bg-zinc-900 border border-zinc-800 rounded shadow-[0_4px_12px_rgba(0,0,0,0.5)] py-1 z-[100] animate-in fade-in slide-in-from-top-1 duration-100">
+                {Object.keys(eq10Presets).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => {
+                      onPresetSelect(p);
+                      setDropdownOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1 text-[10px] transition-colors flex items-center justify-between ${
+                      presetName === p 
+                        ? 'bg-amber-500/10 text-amber-400 font-bold' 
+                        : 'text-zinc-300 hover:bg-zinc-800 hover:text-white'
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
           <button 
             onClick={onBypassToggle}
             className={`flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-1 rounded transition-all cursor-pointer border ${
