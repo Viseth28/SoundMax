@@ -1702,8 +1702,8 @@ function Visualizer({ analyser }: { analyser: AnalyserNode | null }) {
   }, [analyser]);
 
   return (
-    <div className="w-full flex-grow flex-1 bg-zinc-950 rounded-lg overflow-hidden shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] border border-zinc-800/50 min-h-[200px]">
-      <canvas ref={canvasRef} className="w-full h-full" width={1024} height={512}></canvas>
+    <div className="w-full h-[180px] flex-shrink-0 bg-zinc-950 rounded-lg overflow-hidden shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] border border-zinc-800/50">
+      <canvas ref={canvasRef} className="w-full h-full" width={1024} height={360}></canvas>
     </div>
   );
 }
