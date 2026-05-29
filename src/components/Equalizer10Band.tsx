@@ -18,6 +18,7 @@ interface Equalizer10BandProps {
   onChange: (value: number, index: number) => void;
   presetName: string;
   onPresetSelect: (name: string) => void;
+  isSidebar?: boolean;
 }
 
 export default function Equalizer10Band({
@@ -28,6 +29,7 @@ export default function Equalizer10Band({
   onChange,
   presetName,
   onPresetSelect,
+  isSidebar = false,
 }: Equalizer10BandProps) {
   const frequencies = [
     { label: '31', unit: 'Hz' },
@@ -65,32 +67,44 @@ export default function Equalizer10Band({
   };
 
   return (
-    <div className="flex-1 bg-zinc-900 rounded-xl border border-zinc-800 flex flex-col p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)] group relative select-none min-h-[220px]">
+    <div className={`flex-grow flex flex-col select-none ${
+      isSidebar 
+        ? 'w-full h-full' 
+        : 'bg-zinc-900 rounded-xl border border-zinc-800 p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)] group relative min-h-[220px]'
+    }`}>
       {/* Header Area */}
-      <div className="flex justify-between items-center mb-4 shrink-0">
-        <h2 className="text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2">
-          <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-          10-BAND GRAPHIC EQUALIZER
-        </h2>
+      <div className={`flex items-center shrink-0 ${
+        isSidebar 
+          ? 'justify-between gap-1.5 w-full bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-800/60 mb-2' 
+          : 'justify-between mb-4'
+      }`}>
+        {!isSidebar && (
+          <h2 className="text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            10-BAND GRAPHIC EQUALIZER
+          </h2>
+        )}
         
         {/* Bypass, Preset and Reset Controls */}
-        <div className="flex items-center gap-2.5">
+        <div className={`flex items-center ${
+          isSidebar ? 'justify-between w-full gap-2' : 'gap-2.5'
+        }`}>
           {/* Preset Selector Dropdown inside Equalizer Header */}
-          <div className="relative" ref={dropdownRef}>
+          <div className="relative flex-1" ref={dropdownRef}>
             <button 
               onClick={() => !isBypassed && setDropdownOpen(!dropdownOpen)}
               disabled={isBypassed}
-              className={`flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 text-[10px] font-bold text-zinc-300 rounded px-2.5 py-1 outline-none min-w-[100px] justify-between transition-all select-none ${
+              className={`flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 text-[10px] font-bold text-zinc-300 rounded px-2.5 py-1 outline-none justify-between transition-all select-none w-full ${
                 isBypassed 
-                  ? 'opacity-40 cursor-not-allowed border-zinc-900' 
+                  ? 'opacity-40 cursor-not-allowed border-zinc-900/50' 
                   : 'hover:border-zinc-700 hover:text-white cursor-pointer'
               }`}
             >
-              <span className="flex items-center gap-1">
-                <Music size={10} className="text-amber-500" />
-                <span className={presetName === "Custom" ? "italic text-zinc-500" : "text-zinc-200"}>{presetName}</span>
+              <span className="flex items-center gap-1 truncate">
+                <Music size={10} className="text-amber-500 shrink-0" />
+                <span className={`truncate ${presetName === "Custom" ? "italic text-zinc-500" : "text-zinc-200"}`}>{presetName}</span>
               </span>
-              <ChevronDown size={10} className={`text-zinc-500 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+              <ChevronDown size={10} className={`text-zinc-500 transition-transform shrink-0 ${dropdownOpen ? 'rotate-180' : ''}`} />
             </button>
             
             {dropdownOpen && !isBypassed && (
@@ -117,7 +131,7 @@ export default function Equalizer10Band({
 
           <button 
             onClick={onBypassToggle}
-            className={`flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-1 rounded transition-all cursor-pointer border ${
+            className={`flex items-center gap-1 text-[10px] font-extrabold uppercase px-2 py-1 rounded transition-all cursor-pointer border shrink-0 ${
               isBypassed 
                 ? 'bg-zinc-950 border-zinc-800 text-zinc-600 hover:text-zinc-400 hover:border-zinc-700' 
                 : 'bg-amber-500/10 border-amber-500/30 text-amber-500 drop-shadow-[0_0_4px_rgba(245,158,11,0.3)] hover:text-amber-400'
@@ -125,12 +139,12 @@ export default function Equalizer10Band({
             title={isBypassed ? "Engage 10-Band EQ" : "Bypass 10-Band EQ"}
           >
             <Power size={11} />
-            <span>{isBypassed ? 'BYPASSED' : 'ACTIVE'}</span>
+            <span>{isBypassed ? 'BYP' : 'ON'}</span>
           </button>
 
           <button 
             onClick={handleResetClick}
-            className={`p-1.5 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded transition-all cursor-pointer opacity-80 hover:opacity-100 ${
+            className={`p-1.5 bg-zinc-950 border border-zinc-800 hover:border-zinc-700 text-zinc-400 hover:text-zinc-200 rounded transition-all cursor-pointer opacity-80 hover:opacity-100 shrink-0 ${
               isSpinning ? 'animate-spin' : ''
             }`}
             title="Reset All Faders to 0 dB"
@@ -142,17 +156,21 @@ export default function Equalizer10Band({
       </div>
 
       {/* Main Faders Grid */}
-      <div className={`flex-1 flex justify-between items-stretch gap-2.5 pb-1 transition-opacity duration-300 ${
+      <div className={`flex-grow flex justify-between items-stretch transition-opacity duration-300 ${
+        isSidebar ? 'gap-0.5 mt-2 pb-2' : 'gap-2.5 pb-1'
+      } ${
         isBypassed ? 'opacity-35 pointer-events-none' : ''
       }`}>
         
         {/* DB Reference scale lines on the left */}
-        <div className="flex flex-col justify-between text-[8px] font-mono text-zinc-600 select-none pr-1.5 border-r border-zinc-800/30 py-4 mr-0.5">
-          <span>+12 dB</span>
-          <span>+6 dB</span>
-          <span>0 dB</span>
-          <span>-6 dB</span>
-          <span>-12 dB</span>
+        <div className={`flex flex-col justify-between text-[8px] font-mono text-zinc-600 select-none border-r border-zinc-800/30 py-4 mr-0.5 ${
+          isSidebar ? 'pr-1 text-right min-w-[22px]' : 'pr-1.5'
+        }`}>
+          <span>{isSidebar ? '+12' : '+12 dB'}</span>
+          <span>{isSidebar ? '+6' : '+6 dB'}</span>
+          <span>0</span>
+          <span>{isSidebar ? '-6' : '-6 dB'}</span>
+          <span>{isSidebar ? '-12' : '-12 dB'}</span>
         </div>
 
         {/* Faders */}
@@ -164,7 +182,7 @@ export default function Equalizer10Band({
           return (
             <div 
               key={idx}
-              className="flex-1 flex flex-col items-center relative group/fader"
+              className="flex-grow flex flex-col items-center relative group/fader"
               onMouseEnter={() => setHoveredIdx(idx)}
               onMouseLeave={() => setHoveredIdx(null)}
             >
@@ -176,7 +194,9 @@ export default function Equalizer10Band({
               )}
 
               {/* Fader Track & Thumb Container */}
-              <div className="flex-1 w-6 relative flex justify-center py-4 cursor-ns-resize">
+              <div className={`flex-1 relative flex justify-center py-4 cursor-ns-resize ${
+                isSidebar ? 'w-3.5' : 'w-6'
+              }`}>
                 {/* Visual Reference Tic marks */}
                 <div className="absolute inset-y-4 w-px bg-zinc-800"></div>
 
@@ -216,14 +236,18 @@ export default function Equalizer10Band({
 
                 {/* Fader Thumb Handle (Premium analog console look) */}
                 <div 
-                  className="absolute w-5 h-2.5 bg-zinc-950 border border-zinc-800 group-hover/fader:border-amber-500/60 rounded shadow-[0_2px_5px_rgba(0,0,0,0.5)] flex items-center justify-center pointer-events-none z-10 transition-all"
+                  className={`absolute h-2.5 bg-zinc-950 border border-zinc-800 group-hover/fader:border-amber-500/60 rounded shadow-[0_2px_5px_rgba(0,0,0,0.5)] flex items-center justify-center pointer-events-none z-10 transition-all ${
+                    isSidebar ? 'w-3.5' : 'w-5'
+                  }`}
                   style={{
                     bottom: `calc(${percent}% - 5px)`,
                     boxShadow: hoveredIdx === idx ? '0 0 8px rgba(245, 158, 11, 0.4)' : 'none'
                   }}
                 >
                   {/* Metal core notch indicator */}
-                  <div className={`w-3.5 h-[2px] rounded ${
+                  <div className={`h-[2px] rounded ${
+                    isSidebar ? 'w-2' : 'w-3.5'
+                  } ${
                     hoveredIdx === idx ? 'bg-amber-400' : 'bg-zinc-600'
                   }`}></div>
                 </div>

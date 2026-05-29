@@ -7,7 +7,7 @@ import { encodeFLAC } from './flacEncoder';
 import { calculateAutoMaster } from './autoMaster';
 import { exportIndividualVideo, exportAlbumVideo, isWebCodecsSupported } from './videoExport';
 import Knob from './components/Knob';
-import Equalizer10Band, { eq10Presets } from './components/Equalizer10Band';
+import { eq10Presets } from './components/Equalizer10Band';
 import LeftSidebar, { type HistoryRecord } from './components/LeftSidebar';
 
 interface QueuedFile {
@@ -771,8 +771,13 @@ export default function App() {
         
         {/* Left Sidebar */}
         <LeftSidebar 
-          currentPreset={presetName}
-          onPresetSelect={handlePresetSelect}
+          eqValues={params.eq10 || [0,0,0,0,0,0,0,0,0,0]}
+          isEqBypassed={bypassState.eq10}
+          onEqBypassToggle={() => toggleBypass('eq10')}
+          onEqReset={() => resetSection('eq10')}
+          onEqChange={(val, idx) => handleSliderChange({ target: { value: String(val) } } as any, 'eq10', idx)}
+          eqPresetName={presetName10}
+          onEqPresetSelect={handlePresetSelect10}
           history={history}
           onClearHistory={() => setHistory([])}
         />
@@ -785,17 +790,6 @@ export default function App() {
           
           {/* Spectrum Analyzer Panel */}
           <Visualizer analyser={analyserNode} />
-
-          {/* 10-Band Graphic Equalizer Faders Card */}
-          <Equalizer10Band 
-            values={params.eq10 || [0,0,0,0,0,0,0,0,0,0]} 
-            isBypassed={bypassState.eq10}
-            onBypassToggle={() => toggleBypass('eq10')}
-            onReset={() => resetSection('eq10')}
-            onChange={(val, idx) => handleSliderChange({ target: { value: String(val) } } as any, 'eq10', idx)}
-            presetName={presetName10}
-            onPresetSelect={handlePresetSelect10}
-          />
 
           {/* Settings Console (Bottom Panel) - Snug visual height fitted to knobs */}
           <div className="h-[240px] shrink-0 bg-zinc-900 rounded-xl border border-zinc-800 flex flex-col p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)]">
@@ -1567,8 +1561,8 @@ function Visualizer({ analyser }: { analyser: AnalyserNode | null }) {
   }, [analyser]);
 
   return (
-    <div className="w-full h-24 flex-shrink-0 bg-zinc-950 rounded-lg overflow-hidden shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] border border-zinc-800/50">
-      <canvas ref={canvasRef} className="w-full h-full" width={1024} height={128}></canvas>
+    <div className="w-full flex-grow flex-1 bg-zinc-950 rounded-lg overflow-hidden shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] border border-zinc-800/50 min-h-[200px]">
+      <canvas ref={canvasRef} className="w-full h-full" width={1024} height={512}></canvas>
     </div>
   );
 }

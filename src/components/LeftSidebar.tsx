@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { 
-  Music, 
   History, 
   HelpCircle, 
   ChevronLeft, 
@@ -9,7 +8,7 @@ import {
   Clock, 
   Keyboard 
 } from 'lucide-react';
-import { presets } from '../audioEngine';
+import Equalizer10Band from './Equalizer10Band';
 
 export interface HistoryRecord {
   id: string;
@@ -20,23 +19,33 @@ export interface HistoryRecord {
 }
 
 interface LeftSidebarProps {
-  currentPreset: string;
-  onPresetSelect: (name: string) => void;
+  eqValues: number[];
+  isEqBypassed: boolean;
+  onEqBypassToggle: () => void;
+  onEqReset: () => void;
+  onEqChange: (value: number, index: number) => void;
+  eqPresetName: string;
+  onEqPresetSelect: (name: string) => void;
   history: HistoryRecord[];
   onClearHistory: () => void;
 }
 
 export default function LeftSidebar({
-  currentPreset,
-  onPresetSelect,
+  eqValues,
+  isEqBypassed,
+  onEqBypassToggle,
+  onEqReset,
+  onEqChange,
+  eqPresetName,
+  onEqPresetSelect,
   history,
   onClearHistory,
 }: LeftSidebarProps) {
   const [isOpen, setIsOpen] = useState(true);
-  const [activeTab, setActiveTab] = useState<'presets' | 'history' | 'help'>('presets');
+  const [activeTab, setActiveTab] = useState<'eq' | 'history' | 'help'>('eq');
 
   const tabs = [
-    { id: 'presets' as const, label: 'Preset Library', icon: Music },
+    { id: 'eq' as const, label: '10-Band EQ', icon: Sliders },
     { id: 'history' as const, label: 'Mastering Logs', icon: History },
     { id: 'help' as const, label: 'Help Center', icon: HelpCircle },
   ];
@@ -102,7 +111,7 @@ export default function LeftSidebar({
           {/* Tab Header title */}
           <div className="border-b border-zinc-800 pb-3 mb-4 shrink-0 flex justify-between items-center">
             <span className="text-[10px] font-extrabold uppercase tracking-widest text-zinc-400">
-              {activeTab === 'presets' && 'Preset Library'}
+              {activeTab === 'eq' && '10-Band Graphic EQ'}
               {activeTab === 'history' && 'Mastering Logs'}
               {activeTab === 'help' && 'Console Help'}
             </span>
@@ -119,42 +128,19 @@ export default function LeftSidebar({
           {/* Dynamic Tab Body */}
           <div className="flex-1 overflow-auto pr-1">
             
-            {/* TAB A: Presets list */}
-            {activeTab === 'presets' && (
-              <div className="space-y-2.5">
-                {Object.keys(presets).map((p) => {
-                  const isCurrent = currentPreset === p;
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => onPresetSelect(p)}
-                      className={`w-full text-left p-3 rounded-lg border transition-all duration-150 cursor-pointer relative group/card flex flex-col ${
-                        isCurrent 
-                          ? 'bg-amber-500/10 border-amber-500/40 shadow-[0_4px_12px_rgba(245,158,11,0.05)]' 
-                          : 'bg-zinc-950/40 border-zinc-800/80 hover:border-zinc-700/80 hover:bg-zinc-850/40'
-                      }`}
-                    >
-                      <span className={`text-xs font-bold transition-colors ${
-                        isCurrent ? 'text-amber-400' : 'text-zinc-200 group-hover/card:text-white'
-                      }`}>
-                        {p}
-                      </span>
-                      <span className="text-[9px] text-zinc-500 mt-1 leading-tight">
-                        {p === 'Default' && 'Flat, clean profile with linear response.'}
-                        {p === 'EDM Punch' && 'Aggressive compression and prominent bass boost.'}
-                        {p === 'Vocal Pop' && 'Vocal presence boost with spatial expansion.'}
-                        {p === 'Lo-Fi Vintage' && 'Warm saturation, rolled-off highs, and organic echo.'}
-                        {p === 'Acoustic Warmth' && 'Subdued compression with mild room reverb.'}
-                        {p === 'Podcast Polish' && 'Tight mid control and streaming standard loudness.'}
-                        {p === 'AI Mastered' && '✦ Custom matching response calculated by Auto-Master.'}
-                      </span>
-                      
-                      {isCurrent && (
-                        <div className="absolute right-3 top-3 w-1.5 h-1.5 rounded-full bg-amber-500 drop-shadow-[0_0_3px_#f59e0b]"></div>
-                      )}
-                    </button>
-                  );
-                })}
+            {/* TAB A: 10-Band EQ */}
+            {activeTab === 'eq' && (
+              <div className="h-full flex flex-col">
+                <Equalizer10Band
+                  values={eqValues}
+                  isBypassed={isEqBypassed}
+                  onBypassToggle={onEqBypassToggle}
+                  onReset={onEqReset}
+                  onChange={onEqChange}
+                  presetName={eqPresetName}
+                  onPresetSelect={onEqPresetSelect}
+                  isSidebar={true}
+                />
               </div>
             )}
 
