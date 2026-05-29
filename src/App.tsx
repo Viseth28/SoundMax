@@ -98,6 +98,8 @@ const translations = {
     aiProbLabel: "AI Probability",
     aiVerdictAI: "AI Generated (Watermark Detected)",
     aiVerdictHuman: "Human Produced (100% Organic)",
+    aiMessageAI: "Scan Complete: This is an AI-Generated track.",
+    aiMessageHuman: "Scan Complete: This is a Human-Produced organic track.",
   },
   kh: {
     title: "ផ្ទាំងបញ្ជាស្ទូឌីយោ SoundMax",
@@ -186,6 +188,8 @@ const translations = {
     aiProbLabel: "ប្រូបាប៊ីលីតេ AI",
     aiVerdictAI: "បង្កើតដោយ AI (រកឃើញស្ទើរស្បែក)",
     aiVerdictHuman: "ផលិតដោយមនុស្ស (សរីរាង្គ ១០០%)",
+    aiMessageAI: "ស្កេនរួចរាល់៖ បទចម្រៀងនេះបង្កើតដោយ AI។",
+    aiMessageHuman: "ស្កេនរួចរាល់៖ បទចម្រៀងនេះផលិតដោយមនុស្ស។",
   }
 };
 
@@ -1188,6 +1192,15 @@ export default function App() {
                               style={{ width: `${aiProb}%` }}
                             ></div>
                           </div>
+                        </div>
+
+                        {/* Clear Scan Status Message Banner */}
+                        <div className={`mt-0.5 p-2 rounded-lg border text-[10px] font-bold leading-relaxed shadow-sm text-center uppercase tracking-wide transition-all ${
+                          isAiGen 
+                            ? 'bg-red-500/10 border-red-500/20 text-red-400 shadow-[0_0_8px_rgba(239,68,68,0.02)]' 
+                            : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.02)]'
+                        }`}>
+                          {isAiGen ? t.aiMessageAI : t.aiMessageHuman}
                         </div>
                       </div>
                     </div>
