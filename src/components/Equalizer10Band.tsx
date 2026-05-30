@@ -103,21 +103,21 @@ export default function Equalizer10Band({
         : 'bg-zinc-900 rounded-xl border border-zinc-800 p-3 sm:p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)] group relative min-h-[220px]'
     }`}>
       {/* Header Area */}
-      <div className={`flex items-center shrink-0 ${
+      <div className={`flex shrink-0 ${
         isSidebar 
-          ? 'justify-between gap-1.5 w-full bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-800/60 mb-2' 
-          : 'justify-between mb-4'
+          ? 'flex-row items-center justify-between gap-1.5 w-full bg-zinc-950/40 p-2.5 rounded-lg border border-zinc-800/60 mb-2' 
+          : 'flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4'
       }`}>
         {!isSidebar && (
-          <h2 className="text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></span>
-            {language === 'kh' ? 'អេក្វាឡឺហ្សឺក្រាហ្វិក ១០-ប៊ែន' : '10-BAND GRAPHIC EQUALIZER'}
+          <h2 className="text-xs sm:text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2 shrink-0">
+            <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-amber-500 animate-pulse"></span>
+            {language === 'kh' ? 'អេក្វាឡឺហ្សឺក្រាក្វិក ១០-ប៊ែន' : '10-BAND GRAPHIC EQUALIZER'}
           </h2>
         )}
         
         {/* Bypass, Preset and Reset Controls */}
-        <div className={`flex items-center ${
-          isSidebar ? 'justify-between w-full gap-2' : 'gap-2.5'
+        <div className={`flex items-center w-full sm:w-auto justify-between sm:justify-end ${
+          isSidebar ? 'gap-2' : 'gap-2.5'
         }`}>
           {/* Preset Selector Dropdown inside Equalizer Header */}
           <div className="relative flex-1" ref={dropdownRef}>

@@ -961,24 +961,27 @@ export default function App() {
               language={language}
             />
           ) : (
-            /* Settings Console (Bottom Panel) - Now flex-grow to occupy all vertical space beautifully */
+             /* Settings Console (Bottom Panel) - Now flex-grow to occupy all vertical space beautifully */
             <div className="flex-grow flex-1 flex flex-col bg-zinc-900 rounded-xl border border-zinc-800 p-3 sm:p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)] select-none min-h-[360px]">
-              <div className="flex justify-between items-center mb-4 shrink-0 font-sans">
-                <h2 className="text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2">
-                  <Settings size={16} /> {t.masteringConsole}
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 shrink-0 font-sans">
+                <h2 className="text-xs sm:text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2 shrink-0">
+                  <Settings size={15} /> {t.masteringConsole}
                 </h2>
-                <div className="flex items-center gap-2">
-                  <button onClick={handleAutoMaster} className="mr-2 px-3 py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-xs font-bold tracking-wider rounded shadow-[0_0_10px_rgba(245,158,11,0.5)] flex items-center gap-1.5 transition-all cursor-pointer">
-                    <Sparkles size={14} /> {language === 'kh' ? 'អូតូ-ម៉ាស្ទ័រ' : 'AUTO-MASTER'}
+                <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto flex-wrap">
+                  <button 
+                    onClick={handleAutoMaster} 
+                    className="px-2.5 py-1.5 sm:px-3 sm:py-1.5 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white text-[10px] sm:text-xs font-bold tracking-wider rounded shadow-[0_0_10px_rgba(245,158,11,0.5)] flex items-center gap-1 sm:gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Sparkles size={12} className="shrink-0" /> {language === 'kh' ? 'អូតូ-ម៉ាស្ទ័រ' : 'AUTO-MASTER'}
                   </button>
-                  <div className="w-px h-6 bg-zinc-800 mx-2"></div>
-                  <label className="text-xs text-zinc-500 font-bold uppercase tracking-wider mr-1">{t.presetLabel}</label>
+                  <div className="hidden sm:block w-px h-6 bg-zinc-800 mx-1"></div>
+                  <label className="hidden sm:inline text-xs text-zinc-500 font-bold uppercase tracking-wider mr-1">{t.presetLabel}</label>
                   
                   {/* Styled Custom Preset Selector */}
                   <div className="relative" ref={presetRef}>
                     <button 
                       onClick={() => setPresetOpen(!presetOpen)}
-                      className="flex items-center gap-2 bg-zinc-950 border border-zinc-800 text-xs font-semibold text-zinc-200 rounded-lg px-3 py-1.5 outline-none hover:border-amber-500/50 hover:text-white transition-all shadow-sm min-w-[130px] justify-between cursor-pointer focus:ring-1 focus:ring-amber-500"
+                      className="flex items-center gap-1.5 bg-zinc-950 border border-zinc-800 text-[10px] sm:text-xs font-semibold text-zinc-200 rounded-lg px-2.5 py-1.5 sm:px-3 sm:py-1.5 outline-none hover:border-amber-500/50 hover:text-white transition-all shadow-sm min-w-[110px] sm:min-w-[130px] justify-between cursor-pointer focus:ring-1 focus:ring-amber-500"
                     >
                       <span className="flex items-center gap-1.5 font-sans">
                         <Music size={12} className="text-amber-500" />
