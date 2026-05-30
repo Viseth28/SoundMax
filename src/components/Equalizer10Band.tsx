@@ -188,15 +188,13 @@ export default function Equalizer10Band({
       </div>
 
       {/* Main Faders Grid */}
-      <div className={`flex-grow flex justify-between items-stretch transition-opacity duration-300 ${
-        isSidebar ? 'gap-0.5 mt-2 pb-2' : 'gap-2.5 pb-1'
-      } ${
+      <div className={`flex-grow flex items-stretch transition-opacity duration-300 min-h-0 ${
         isBypassed ? 'opacity-35 pointer-events-none' : ''
       }`}>
         
         {/* DB Reference scale lines on the left */}
-        <div className={`flex flex-col justify-between text-[8px] font-mono text-zinc-600 select-none border-r border-zinc-800/30 py-4 mr-0.5 ${
-          isSidebar ? 'pr-1 text-right min-w-[22px]' : 'pr-1.5'
+        <div className={`flex flex-col justify-between text-[8px] font-mono text-zinc-600 select-none border-r border-zinc-800/30 py-4 mr-1.5 shrink-0 ${
+          isSidebar ? 'pr-1 text-right min-w-[22px]' : 'pr-2'
         }`}>
           <span>{isSidebar ? '+12' : '+12 dB'}</span>
           <span>{isSidebar ? '+6' : '+6 dB'}</span>
@@ -205,98 +203,102 @@ export default function Equalizer10Band({
           <span>{isSidebar ? '-12' : '-12 dB'}</span>
         </div>
 
-        {/* Faders */}
-        {frequencies.map(({ label, unit }, idx) => {
-          const val = values[idx] ?? 0;
-          // Map value -12 to 12 into percentage 0 to 100
-          const percent = ((val + 12) / 24) * 100;
+        {/* Faders scrolling container */}
+        <div className={`flex-grow flex justify-between items-stretch overflow-x-auto lg:overflow-x-visible scrollbar-none ${
+          isSidebar ? 'gap-0.5 mt-2 pb-2' : 'gap-2.5 pb-1'
+        }`}>
+          {frequencies.map(({ label, unit }, idx) => {
+            const val = values[idx] ?? 0;
+            // Map value -12 to 12 into percentage 0 to 100
+            const percent = ((val + 12) / 24) * 100;
 
-          return (
-            <div 
-              key={idx}
-              className="flex-grow flex flex-col items-center relative group/fader"
-              onMouseEnter={() => setHoveredIdx(idx)}
-              onMouseLeave={() => setHoveredIdx(null)}
-            >
-              {/* Dynamic Readout Tooltip on Hover */}
-              {hoveredIdx === idx && (
-                <div className="absolute -top-7 z-50 px-1.5 py-0.5 text-[9px] font-extrabold font-mono bg-zinc-950 text-amber-400 border border-amber-500/30 rounded shadow-[0_0_8px_rgba(245,158,11,0.3)] pointer-events-none whitespace-nowrap animate-in fade-in slide-in-from-bottom-1 duration-100">
-                  {val > 0 ? `+${val.toFixed(1)}` : val.toFixed(1)} dB
+            return (
+              <div 
+                key={idx}
+                className="flex-grow flex flex-col items-center relative group/fader min-w-[32px] sm:min-w-0"
+                onMouseEnter={() => setHoveredIdx(idx)}
+                onMouseLeave={() => setHoveredIdx(null)}
+              >
+                {/* Dynamic Readout Tooltip on Hover */}
+                {hoveredIdx === idx && (
+                  <div className="absolute -top-7 z-50 px-1.5 py-0.5 text-[9px] font-extrabold font-mono bg-zinc-950 text-amber-400 border border-amber-500/30 rounded shadow-[0_0_8px_rgba(245,158,11,0.3)] pointer-events-none whitespace-nowrap animate-in fade-in slide-in-from-bottom-1 duration-100">
+                    {val > 0 ? `+${val.toFixed(1)}` : val.toFixed(1)} dB
+                  </div>
+                )}
+
+                {/* Fader Track & Thumb Container */}
+                <div className={`flex-1 relative flex justify-center py-4 cursor-ns-resize ${
+                  isSidebar ? 'w-3.5' : 'w-6'
+                }`}>
+                  {/* Visual Reference Tic marks */}
+                  <div className="absolute inset-y-4 w-px bg-zinc-800"></div>
+
+                  {/* Vertical slider input (rotated to be vertical) */}
+                  <input 
+                    type="range"
+                    min={-12}
+                    max={12}
+                    step={0.1}
+                    value={val}
+                    onChange={(e) => onChange(parseFloat(e.target.value), idx)}
+                    className="absolute inset-y-4 appearance-none w-1 h-full cursor-ns-resize opacity-0 z-20 orientation-vertical"
+                    style={{
+                      writingMode: 'vertical-lr',
+                      direction: 'rtl'
+                    }}
+                  />
+
+                  {/* Visual Fader Track Fill (Center to Thumb) */}
+                  <div 
+                    className="absolute w-0.5 bg-zinc-700 pointer-events-none rounded"
+                    style={{
+                      bottom: '16px',
+                      top: '16px'
+                    }}
+                  ></div>
+                  
+                  {/* Active Colored Fill Line */}
+                  <div 
+                    className="absolute w-[2px] bg-gradient-to-t from-amber-500 to-yellow-400 pointer-events-none transition-all duration-75"
+                    style={{
+                      bottom: val >= 0 ? '50%' : `${percent}%`,
+                      top: val >= 0 ? `${100 - percent}%` : '50%',
+                      boxShadow: '0 0 6px rgba(245, 158, 11, 0.4)'
+                    }}
+                  ></div>
+
+                  {/* Fader Thumb Handle (Premium analog console look) */}
+                  <div 
+                    className={`absolute h-2.5 bg-zinc-950 border border-zinc-800 group-hover/fader:border-amber-500/60 rounded shadow-[0_2px_5px_rgba(0,0,0,0.5)] flex items-center justify-center pointer-events-none z-10 transition-all ${
+                      isSidebar ? 'w-3.5' : 'w-5'
+                    }`}
+                    style={{
+                      bottom: `calc(${percent}% - 5px)`,
+                      boxShadow: hoveredIdx === idx ? '0 0 8px rgba(245, 158, 11, 0.4)' : 'none'
+                    }}
+                  >
+                    {/* Metal core notch indicator */}
+                    <div className={`h-[2px] rounded ${
+                      isSidebar ? 'w-2' : 'w-3.5'
+                    } ${
+                      hoveredIdx === idx ? 'bg-amber-400' : 'bg-zinc-600'
+                    }`}></div>
+                  </div>
                 </div>
-              )}
 
-              {/* Fader Track & Thumb Container */}
-              <div className={`flex-1 relative flex justify-center py-4 cursor-ns-resize ${
-                isSidebar ? 'w-3.5' : 'w-6'
-              }`}>
-                {/* Visual Reference Tic marks */}
-                <div className="absolute inset-y-4 w-px bg-zinc-800"></div>
-
-                {/* Vertical slider input (rotated to be vertical) */}
-                <input 
-                  type="range"
-                  min={-12}
-                  max={12}
-                  step={0.1}
-                  value={val}
-                  onChange={(e) => onChange(parseFloat(e.target.value), idx)}
-                  className="absolute inset-y-4 appearance-none w-1 h-full cursor-ns-resize opacity-0 z-20 orientation-vertical"
-                  style={{
-                    writingMode: 'vertical-lr',
-                    direction: 'rtl'
-                  }}
-                />
-
-                {/* Visual Fader Track Fill (Center to Thumb) */}
-                <div 
-                  className="absolute w-0.5 bg-zinc-700 pointer-events-none rounded"
-                  style={{
-                    bottom: '16px',
-                    top: '16px'
-                  }}
-                ></div>
-                
-                {/* Active Colored Fill Line */}
-                <div 
-                  className="absolute w-[2px] bg-gradient-to-t from-amber-500 to-yellow-400 pointer-events-none transition-all duration-75"
-                  style={{
-                    bottom: val >= 0 ? '50%' : `${percent}%`,
-                    top: val >= 0 ? `${100 - percent}%` : '50%',
-                    boxShadow: '0 0 6px rgba(245, 158, 11, 0.4)'
-                  }}
-                ></div>
-
-                {/* Fader Thumb Handle (Premium analog console look) */}
-                <div 
-                  className={`absolute h-2.5 bg-zinc-950 border border-zinc-800 group-hover/fader:border-amber-500/60 rounded shadow-[0_2px_5px_rgba(0,0,0,0.5)] flex items-center justify-center pointer-events-none z-10 transition-all ${
-                    isSidebar ? 'w-3.5' : 'w-5'
-                  }`}
-                  style={{
-                    bottom: `calc(${percent}% - 5px)`,
-                    boxShadow: hoveredIdx === idx ? '0 0 8px rgba(245, 158, 11, 0.4)' : 'none'
-                  }}
-                >
-                  {/* Metal core notch indicator */}
-                  <div className={`h-[2px] rounded ${
-                    isSidebar ? 'w-2' : 'w-3.5'
-                  } ${
-                    hoveredIdx === idx ? 'bg-amber-400' : 'bg-zinc-600'
-                  }`}></div>
+                {/* Fader Label */}
+                <div className="flex flex-col items-center mt-1 shrink-0">
+                  <span className="text-[9px] font-extrabold text-zinc-300 font-mono tracking-tighter">
+                    {label}
+                  </span>
+                  <span className="text-[7px] text-zinc-500 font-semibold leading-none uppercase">
+                    {unit}
+                  </span>
                 </div>
               </div>
-
-              {/* Fader Label */}
-              <div className="flex flex-col items-center mt-1 shrink-0">
-                <span className="text-[9px] font-extrabold text-zinc-300 font-mono tracking-tighter">
-                  {label}
-                </span>
-                <span className="text-[7px] text-zinc-500 font-semibold leading-none uppercase">
-                  {unit}
-                </span>
-              </div>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -35,7 +35,7 @@ export default function LeftSidebar({
   ];
 
   return (
-    <div className="w-full md:w-20 h-16 md:h-full bg-zinc-950 border-b md:border-b-0 md:border-r border-zinc-900 flex flex-row md:flex-col justify-between items-center px-4 md:px-0 py-3 md:py-6 shrink-0 select-none">
+    <div className="fixed bottom-0 left-0 right-0 md:relative w-full md:w-20 h-16 md:h-full bg-zinc-950/95 border-t md:border-t-0 md:border-r border-zinc-900 flex flex-row md:flex-col justify-between items-center px-4 md:px-0 py-3 md:py-6 shrink-0 select-none z-50 backdrop-blur-md">
       <div className="flex flex-row md:flex-col items-center w-auto md:w-full flex-1 md:flex-none">
         {/* Menu Buttons Stack */}
         <div className="flex flex-row md:flex-col gap-2 md:gap-4 w-auto md:w-full px-0 md:px-2 flex-1 md:flex-none justify-around md:justify-start">

@@ -31,6 +31,15 @@ body {
   background: #2a3f6a;
 }
 
+/* Hide scrollbar utility */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 /* Vertical slider styling */
 input[type=range][orientation=vertical] {
   appearance: slider-vertical;

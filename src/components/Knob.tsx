@@ -186,7 +186,7 @@ export default function Knob({
 
   return (
     <div 
-      className="relative flex flex-col items-center select-none group w-24"
+      className="relative flex flex-col items-center select-none group w-20 sm:w-24"
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -204,7 +204,7 @@ export default function Knob({
       )}
 
       {/* Label */}
-      <span className="text-[10px] text-zinc-400 font-extrabold tracking-widest uppercase mb-1 transition-all group-hover:text-[#ff6b00] group-hover:scale-105 duration-200">
+      <span className="text-[8.5px] sm:text-[10px] text-zinc-400 font-extrabold tracking-widest uppercase mb-1 transition-all group-hover:text-[#ff6b00] group-hover:scale-105 duration-200">
         {label}
       </span>
 
@@ -212,7 +212,7 @@ export default function Knob({
       <div
         ref={knobRef}
         tabIndex={0}
-        className="relative w-16 h-16 flex items-center justify-center cursor-ns-resize transition-all duration-200 group-hover:scale-105 group-hover:drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)] rounded-full"
+        className="relative w-12 h-12 sm:w-16 sm:h-16 flex items-center justify-center cursor-ns-resize transition-all duration-200 group-hover:scale-105 group-hover:drop-shadow-[0_4px_10px_rgba(0,0,0,0.5)] rounded-full"
         onMouseDown={handleMouseDown}
         onTouchStart={handleTouchStart}
         onWheel={handleWheel}
@@ -369,9 +369,9 @@ export default function Knob({
       </div>
 
       {/* Numeric Technical Readout Value */}
-      <span className="text-xs font-mono mt-2 font-bold text-zinc-100 bg-[#050608]/90 border border-zinc-900 px-2 py-0.5 rounded leading-none text-center min-w-[48px] shadow-inner group-hover:border-zinc-800 transition-colors">
+      <span className="text-[10px] sm:text-xs font-mono mt-1.5 sm:mt-2 font-bold text-zinc-100 bg-[#050608]/90 border border-zinc-900 px-1.5 sm:px-2 py-0.5 rounded leading-none text-center min-w-[40px] sm:min-w-[48px] shadow-inner group-hover:border-zinc-800 transition-colors">
         {value > 0 ? `+${value}` : value}
-        <span className="text-[10px] text-zinc-500 ml-0.5 font-sans font-semibold">{unit}</span>
+        <span className="text-[9px] sm:text-[10px] text-zinc-500 ml-0.5 font-sans font-semibold">{unit}</span>
       </span>
     </div>
   );

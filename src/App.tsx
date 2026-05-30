@@ -908,7 +908,7 @@ export default function App() {
   const t = translations[language];
 
   return (
-    <div className="flex flex-col min-h-screen lg:h-screen bg-zinc-950 text-white font-sans overflow-y-auto lg:overflow-hidden">
+    <div className="flex flex-col h-screen bg-zinc-950 text-white font-sans overflow-hidden">
       {/* Header */}
       <header className="flex justify-between items-center px-4 md:px-6 py-4 bg-zinc-900 border-b border-zinc-800 shadow-md flex-shrink-0 flex-wrap gap-3">
         <div className="flex items-center gap-2">
@@ -930,7 +930,7 @@ export default function App() {
       </header>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden h-auto md:h-[calc(100vh-5rem)]">
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden min-h-0">
         
         <LeftSidebar 
           activePanel={activePanel}
@@ -940,7 +940,7 @@ export default function App() {
         />
 
         {/* Dashboard Content Columns */}
-        <div className="flex-1 flex flex-col lg:flex-row p-4 md:p-6 overflow-y-auto lg:overflow-hidden gap-4 md:gap-6 h-auto lg:h-full min-w-0">
+        <div className="flex-1 flex flex-col lg:flex-row p-4 md:p-6 overflow-y-auto lg:overflow-y-hidden lg:overflow-x-hidden gap-4 md:gap-6 h-full min-w-0 pb-36 md:pb-6">
           
           {/* Left Column: Visualizer & Mastering Console */}
           <div className="flex-1 flex flex-col gap-6 h-full min-w-0">
@@ -1529,26 +1529,36 @@ export default function App() {
 
 
       {/* Media Controller Bar */}
-      <div className="h-auto md:h-20 bg-zinc-900 border-t border-zinc-800 px-4 md:px-6 py-4 md:py-0 flex flex-col md:flex-row items-center justify-between shadow-2xl z-40 select-none gap-4 md:gap-0 flex-shrink-0">
+      <div className="fixed bottom-16 left-0 right-0 md:relative md:bottom-auto h-16 md:h-20 bg-zinc-900/95 md:bg-zinc-900 border-t border-zinc-800 px-4 md:px-6 flex flex-row items-center justify-between shadow-2xl z-40 select-none backdrop-blur-md md:backdrop-blur-none flex-shrink-0">
+        {/* Absolute Top Progress Line - Mobile only */}
+        <div className="absolute top-0 left-0 right-0 h-[2.5px] bg-zinc-800 md:hidden overflow-hidden">
+          <div 
+            className="h-full bg-amber-500 transition-all duration-75 shadow-[0_0_8px_#f59e0b]"
+            style={{
+              width: `${playingId ? (currentPlaybackTime / (files.find(f => f.id === playingId)?.duration || 1)) * 100 : 0}%`
+            }}
+          />
+        </div>
+
         {/* Left: Track Info */}
-        <div className="flex items-center gap-3 w-full md:w-1/3 md:min-w-[240px] justify-center md:justify-start">
-          <div className="w-12 h-12 rounded bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-500 shadow-inner shrink-0 relative overflow-hidden group">
+        <div className="flex items-center gap-3 w-2/3 md:w-1/3 min-w-0 md:min-w-[240px] justify-start">
+          <div className="w-10 h-10 md:w-12 md:h-12 rounded bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-500 shadow-inner shrink-0 relative overflow-hidden group">
             {exportConfig.coverImageFile && playingId ? (
               <img src={URL.createObjectURL(exportConfig.coverImageFile)} className="w-full h-full object-cover" alt="Cover" />
             ) : (
-              <Music size={20} className="text-zinc-400 group-hover:text-amber-500 transition-colors" />
+              <Music size={18} className="text-zinc-400 group-hover:text-amber-500 transition-colors" />
             )}
           </div>
-          <div className="flex flex-col truncate text-left md:text-left">
-            <span className="text-sm font-semibold text-zinc-100 truncate">
+          <div className="flex flex-col truncate text-left md:text-left min-w-0">
+            <span className="text-xs md:text-sm font-semibold text-zinc-100 truncate">
               {playingId ? (files.find(f => f.id === playingId)?.name || 'Unknown Track') : 'No Track Playing'}
             </span>
-            <span className="text-xs text-zinc-400 truncate flex items-center gap-1">
+            <span className="text-[10px] md:text-xs text-zinc-400 truncate flex items-center gap-1">
               {playingId ? (
                 <>
-                  {exportConfig.artistName || 'Unknown Artist'} 
-                  <span className="w-1 h-1 rounded-full bg-zinc-600"></span> 
-                  <span className="text-amber-500 font-bold uppercase text-[9px] tracking-wider bg-amber-500/10 px-1 rounded">{presetName}</span>
+                  <span className="truncate">{exportConfig.artistName || 'Unknown Artist'}</span>
+                  <span className="w-1 h-1 rounded-full bg-zinc-600 shrink-0"></span> 
+                  <span className="text-amber-500 font-bold uppercase text-[8px] md:text-[9px] tracking-wider bg-amber-500/10 px-1 rounded shrink-0">{presetName}</span>
                 </>
               ) : 'Select a track to play'}
             </span>
@@ -1556,21 +1566,21 @@ export default function App() {
         </div>
 
         {/* Center: Controls & Seek */}
-        <div className="flex flex-col items-center gap-1.5 w-full md:flex-1 md:max-w-xl px-0 md:px-4">
+        <div className="flex items-center justify-end md:justify-center md:flex-col gap-1.5 w-1/3 md:flex-1 md:max-w-xl">
           {/* Controls */}
-          <div className="flex items-center gap-5">
+          <div className="flex items-center gap-5 shrink-0">
             <button 
               onClick={() => playingId && togglePlayback(playingId)} 
               disabled={!playingId} 
-              className="w-8 h-8 rounded-full bg-white text-zinc-950 flex items-center justify-center hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all shadow-[0_0_15px_rgba(255,255,255,0.2)]"
+              className="w-8 h-8 rounded-full bg-white text-zinc-950 flex items-center justify-center hover:scale-105 active:scale-95 disabled:opacity-50 disabled:scale-100 transition-all shadow-[0_0_15px_rgba(255,255,255,0.2)] cursor-pointer"
               title={isPlaying ? 'Pause' : 'Play'}
             >
-              {isPlaying ? <Pause size={16} fill="currentColor" /> : <Play size={16} className="ml-0.5" fill="currentColor" />}
+              {isPlaying ? <Pause size={14} fill="currentColor" /> : <Play size={14} className="ml-0.5" fill="currentColor" />}
             </button>
           </div>
 
-          {/* Seekbar */}
-          <div className="flex items-center gap-3 w-full">
+          {/* Seekbar - Desktop only */}
+          <div className="hidden md:flex items-center gap-3 w-full">
             <span className="text-[10px] font-mono text-zinc-500 w-8 text-right">
               {formatTime(currentPlaybackTime)}
             </span>
@@ -1602,8 +1612,8 @@ export default function App() {
           </div>
         </div>
 
-        {/* Right: Volume & Format Info */}
-        <div className="flex items-center justify-center md:justify-end gap-4 w-full md:w-1/3 md:min-w-[240px]">
+        {/* Right: Volume & Format Info (Hidden on mobile) */}
+        <div className="hidden md:flex items-center justify-end gap-4 w-1/3 min-w-[240px]">
           <div className="hidden sm:flex items-center gap-1 bg-zinc-950/60 border border-zinc-800/80 px-2.5 py-1 rounded text-[10px] font-bold tracking-wider text-zinc-400 font-mono">
             <Sparkles size={11} className="text-amber-500" />
             {exportConfig.format}
@@ -1612,7 +1622,7 @@ export default function App() {
           <div className="flex items-center gap-2 w-32 group/vol">
             <button 
               onClick={() => setIsMuted(!isMuted)} 
-              className="text-zinc-400 hover:text-white transition-colors"
+              className="text-zinc-400 hover:text-white transition-colors cursor-pointer"
               title={isMuted ? 'Unmute' : 'Mute'}
             >
               {isMuted || playbackVolume === 0 ? <VolumeX size={18} /> : <Volume2 size={18} />}
@@ -1675,7 +1685,7 @@ function SliderGroup({
 
   return (
     <div className="flex flex-col items-center h-full group relative">
-      <div className={`flex gap-4 items-end flex-1 pb-2 transition-opacity duration-300 ${
+      <div className={`flex gap-2 sm:gap-4 items-end flex-1 pb-2 transition-opacity duration-300 ${
         isBypassed ? 'opacity-40 pointer-events-none' : ''
       }`}>
         {children}
