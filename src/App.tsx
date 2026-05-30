@@ -943,7 +943,7 @@ export default function App() {
         <div className="flex-1 flex flex-col lg:flex-row p-4 md:p-6 overflow-y-auto lg:overflow-y-hidden lg:overflow-x-hidden gap-4 md:gap-6 h-full min-w-0 pb-36 md:pb-6">
           
           {/* Left Column: Visualizer & Mastering Console */}
-          <div className="flex-1 flex flex-col gap-6 h-full min-w-0">
+          <div className="flex-grow lg:flex-1 flex flex-col gap-6 h-auto lg:h-full min-w-0">
           
           {/* Spectrum Analyzer Panel */}
           <Visualizer analyser={analyserNode} />
