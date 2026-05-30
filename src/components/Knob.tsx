@@ -269,7 +269,7 @@ export default function Knob({
                 y2={y2}
                 stroke={isActiveTick ? selectedColor.stroke : 'rgba(255,255,255,0.05)'}
                 strokeWidth={isActiveTick ? 1.75 : 1}
-                className="transition-colors duration-150"
+                className={`transition-colors duration-150 ${isActiveTick ? '' : 'stroke-tick-inactive'}`}
                 style={{
                   filter: isActiveTick ? `drop-shadow(0 0 3px ${selectedColor.stroke})` : 'none',
                 }}
@@ -287,7 +287,7 @@ export default function Knob({
             strokeWidth={strokeWidth}
             strokeDasharray={strokeDasharray}
             strokeLinecap="round"
-            className="transform rotate-[225deg] origin-center"
+            className="transform rotate-[225deg] origin-center knob-track-bg"
           />
 
           {/* Glowing Active Arc */}
