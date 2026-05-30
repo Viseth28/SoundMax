@@ -100,7 +100,7 @@ export default function Equalizer10Band({
     <div className={`flex-grow flex flex-col select-none ${
       isSidebar 
         ? 'w-full h-full' 
-        : 'bg-zinc-900 rounded-xl border border-zinc-800 p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)] group relative min-h-[220px]'
+        : 'bg-zinc-900 rounded-xl border border-zinc-800 p-3 sm:p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)] group relative min-h-[220px]'
     }`}>
       {/* Header Area */}
       <div className={`flex items-center shrink-0 ${

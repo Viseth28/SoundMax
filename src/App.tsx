@@ -908,29 +908,29 @@ export default function App() {
   const t = translations[language];
 
   return (
-    <div className="flex flex-col h-screen bg-zinc-950 text-white font-sans overflow-hidden">
+    <div className="flex flex-col min-h-screen lg:h-screen bg-zinc-950 text-white font-sans overflow-y-auto lg:overflow-hidden">
       {/* Header */}
-      <header className="flex justify-between items-center px-6 py-4 bg-zinc-900 border-b border-zinc-800 shadow-md">
+      <header className="flex justify-between items-center px-4 md:px-6 py-4 bg-zinc-900 border-b border-zinc-800 shadow-md flex-shrink-0 flex-wrap gap-3">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded bg-amber-500 flex items-center justify-center font-bold text-lg shadow-[0_0_15px_rgba(245,158,11,0.6)] animate-pulse">
             SM
           </div>
-          <h1 className="text-xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300 font-sans uppercase">
+          <h1 className="text-lg md:text-xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-amber-400 to-yellow-300 font-sans uppercase">
             {t.title}
           </h1>
         </div>
-        <div className="flex items-center gap-4">
-          <button onClick={() => setShowVideoModal(true)} className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-sm font-semibold rounded transition-all flex items-center gap-2 text-zinc-200 cursor-pointer">
-            <Video size={16} /> {t.videoStudio}
+        <div className="flex items-center gap-2 md:gap-4 ml-auto md:ml-0">
+          <button onClick={() => setShowVideoModal(true)} className="px-3 py-1.5 md:px-4 md:py-2 bg-zinc-800 hover:bg-zinc-700 text-xs md:text-sm font-semibold rounded transition-all flex items-center gap-2 text-zinc-200 cursor-pointer">
+            <Video size={14} /> {t.videoStudio}
           </button>
-          <button onClick={() => setShowExportModal(true)} className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-sm font-semibold rounded transition-all shadow-[0_0_10px_rgba(245,158,11,0.4)] flex items-center gap-2 cursor-pointer">
-            <Download size={16} /> {t.exportConfig}
+          <button onClick={() => setShowExportModal(true)} className="px-3 py-1.5 md:px-4 md:py-2 bg-amber-600 hover:bg-amber-500 text-xs md:text-sm font-semibold rounded transition-all shadow-[0_0_10px_rgba(245,158,11,0.4)] flex items-center gap-2 cursor-pointer">
+            <Download size={14} /> {t.exportConfig}
           </button>
         </div>
       </header>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-row overflow-hidden h-[calc(100vh-5rem)]">
+      <div className="flex-1 flex flex-col md:flex-row overflow-y-auto md:overflow-hidden h-auto md:h-[calc(100vh-5rem)]">
         
         <LeftSidebar 
           activePanel={activePanel}
@@ -940,7 +940,7 @@ export default function App() {
         />
 
         {/* Dashboard Content Columns */}
-        <div className="flex-1 flex flex-row p-6 overflow-hidden gap-6 h-full min-w-0">
+        <div className="flex-1 flex flex-col lg:flex-row p-4 md:p-6 overflow-y-auto lg:overflow-hidden gap-4 md:gap-6 h-auto lg:h-full min-w-0">
           
           {/* Left Column: Visualizer & Mastering Console */}
           <div className="flex-1 flex flex-col gap-6 h-full min-w-0">
@@ -962,7 +962,7 @@ export default function App() {
             />
           ) : (
             /* Settings Console (Bottom Panel) - Now flex-grow to occupy all vertical space beautifully */
-            <div className="flex-grow flex-1 flex flex-col bg-zinc-900 rounded-xl border border-zinc-800 p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)] select-none min-h-[360px]">
+            <div className="flex-grow flex-1 flex flex-col bg-zinc-900 rounded-xl border border-zinc-800 p-3 sm:p-5 shadow-[inset_0_2px_20px_rgba(0,0,0,0.2)] select-none min-h-[360px]">
               <div className="flex justify-between items-center mb-4 shrink-0 font-sans">
                 <h2 className="text-sm font-semibold text-zinc-400 tracking-wider flex items-center gap-2">
                   <Settings size={16} /> {t.masteringConsole}
@@ -1033,9 +1033,9 @@ export default function App() {
 
               <div className="flex-grow flex-1 flex flex-col justify-around py-2 min-h-0 gap-4">
                 {/* ROW 1: EQ & Dynamics */}
-                <div className="flex flex-row justify-around items-center w-full">
+                <div className="flex flex-col md:flex-row justify-around items-center w-full gap-6 md:gap-0">
                   {/* EQ Section */}
-                  <div className="flex-1 flex justify-center">
+                  <div className="flex-1 flex justify-center w-full">
                     <SliderGroup 
                       title={t.eqTone} 
                       isBypassed={bypassState.eq} 
@@ -1049,10 +1049,10 @@ export default function App() {
                     </SliderGroup>
                   </div>
 
-                  <div className="w-px h-28 bg-zinc-800/60 mx-4"></div>
+                  <div className="hidden md:block w-px h-28 bg-zinc-800/60 mx-4"></div>
 
                   {/* Dynamics Section */}
-                  <div className="flex-1 flex justify-center">
+                  <div className="flex-1 flex justify-center w-full">
                     <SliderGroup 
                       title={t.dynamics} 
                       isBypassed={bypassState.dynamics} 
@@ -1067,12 +1067,12 @@ export default function App() {
                   </div>
                 </div>
 
-                <div className="h-px w-full bg-zinc-800/40 my-1"></div>
+                <div className="hidden md:block h-px w-full bg-zinc-800/40 my-1"></div>
 
                 {/* ROW 2: Color, Space & Master */}
-                <div className="flex flex-row justify-around items-center w-full">
+                <div className="flex flex-col md:flex-row justify-around items-center w-full gap-6 md:gap-0">
                   {/* Saturation Color Section */}
-                  <div className="flex-1 flex justify-center">
+                  <div className="flex-1 flex justify-center w-full">
                     <SliderGroup 
                       title={t.colorTone} 
                       isBypassed={bypassState.color} 
@@ -1084,10 +1084,10 @@ export default function App() {
                     </SliderGroup>
                   </div>
 
-                  <div className="w-px h-28 bg-zinc-800/60 mx-4"></div>
+                  <div className="hidden md:block w-px h-28 bg-zinc-800/60 mx-4"></div>
 
                   {/* Space / Mono Section */}
-                  <div className="flex-1 flex justify-center">
+                  <div className="flex-1 flex justify-center w-full">
                     <SliderGroup 
                       title={t.spaceMono} 
                       isBypassed={bypassState.space} 
@@ -1101,10 +1101,10 @@ export default function App() {
                     </SliderGroup>
                   </div>
 
-                  <div className="w-px h-28 bg-zinc-800/60 mx-4"></div>
+                  <div className="hidden md:block w-px h-28 bg-zinc-800/60 mx-4"></div>
                   
                   {/* Master */}
-                  <div className="flex-1 flex justify-center">
+                  <div className="flex-1 flex justify-center w-full">
                     <SliderGroup 
                       title={t.masterOutput} 
                       showBypass={false} 
@@ -1122,7 +1122,7 @@ export default function App() {
 
         {/* Right Column: Batch Queue Panel */}
         <div 
-          className={`w-[450px] rounded-xl border flex flex-col overflow-hidden shadow-lg relative transition-colors shrink-0 h-full ${isDragging ? 'bg-zinc-800 border-amber-500' : 'bg-zinc-900 border-zinc-800'}`}
+          className={`w-full lg:w-[400px] xl:w-[450px] rounded-xl border flex flex-col overflow-hidden shadow-lg relative transition-colors shrink-0 h-[380px] lg:h-full ${isDragging ? 'bg-zinc-800 border-amber-500' : 'bg-zinc-900 border-zinc-800'}`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
@@ -1529,9 +1529,9 @@ export default function App() {
 
 
       {/* Media Controller Bar */}
-      <div className="h-20 bg-zinc-900 border-t border-zinc-800 px-6 flex items-center justify-between shadow-2xl z-40 select-none">
+      <div className="h-auto md:h-20 bg-zinc-900 border-t border-zinc-800 px-4 md:px-6 py-4 md:py-0 flex flex-col md:flex-row items-center justify-between shadow-2xl z-40 select-none gap-4 md:gap-0 flex-shrink-0">
         {/* Left: Track Info */}
-        <div className="flex items-center gap-3 w-1/3 min-w-[240px]">
+        <div className="flex items-center gap-3 w-full md:w-1/3 md:min-w-[240px] justify-center md:justify-start">
           <div className="w-12 h-12 rounded bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-500 shadow-inner shrink-0 relative overflow-hidden group">
             {exportConfig.coverImageFile && playingId ? (
               <img src={URL.createObjectURL(exportConfig.coverImageFile)} className="w-full h-full object-cover" alt="Cover" />
@@ -1539,7 +1539,7 @@ export default function App() {
               <Music size={20} className="text-zinc-400 group-hover:text-amber-500 transition-colors" />
             )}
           </div>
-          <div className="flex flex-col truncate">
+          <div className="flex flex-col truncate text-left md:text-left">
             <span className="text-sm font-semibold text-zinc-100 truncate">
               {playingId ? (files.find(f => f.id === playingId)?.name || 'Unknown Track') : 'No Track Playing'}
             </span>
@@ -1556,7 +1556,7 @@ export default function App() {
         </div>
 
         {/* Center: Controls & Seek */}
-        <div className="flex flex-col items-center gap-1.5 flex-1 max-w-xl px-4">
+        <div className="flex flex-col items-center gap-1.5 w-full md:flex-1 md:max-w-xl px-0 md:px-4">
           {/* Controls */}
           <div className="flex items-center gap-5">
             <button 
@@ -1603,7 +1603,7 @@ export default function App() {
         </div>
 
         {/* Right: Volume & Format Info */}
-        <div className="flex items-center justify-end gap-4 w-1/3 min-w-[240px]">
+        <div className="flex items-center justify-center md:justify-end gap-4 w-full md:w-1/3 md:min-w-[240px]">
           <div className="hidden sm:flex items-center gap-1 bg-zinc-950/60 border border-zinc-800/80 px-2.5 py-1 rounded text-[10px] font-bold tracking-wider text-zinc-400 font-mono">
             <Sparkles size={11} className="text-amber-500" />
             {exportConfig.format}
