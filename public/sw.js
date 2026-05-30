@@ -1,4 +1,4 @@
-const CACHE_NAME = 'soundmax-cache-v3';
+const CACHE_NAME = 'soundmax-cache-v4';
 
 // Stable core assets to pre-cache during installation
 const PRECACHE_ASSETS = [
