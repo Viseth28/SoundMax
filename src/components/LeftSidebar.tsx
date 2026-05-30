@@ -1,12 +1,13 @@
 import { 
   Sliders, 
   Music,
+  ListMusic,
   Settings
 } from 'lucide-react';
 
 interface LeftSidebarProps {
-  activePanel: 'eq' | 'master';
-  onPanelChange: (panel: 'eq' | 'master') => void;
+  activePanel: 'eq' | 'master' | 'queue';
+  onPanelChange: (panel: 'eq' | 'master' | 'queue') => void;
   onOpenSettings: () => void;
   language?: 'en' | 'kh';
 }
@@ -32,6 +33,14 @@ export default function LeftSidebar({
       action: () => onPanelChange('master'),
       isActive: activePanel === 'master'
     },
+    { 
+      id: 'queue' as const, 
+      label: language === 'kh' ? 'បញ្ជី' : 'Queue', 
+      icon: ListMusic,
+      action: () => onPanelChange('queue'),
+      isActive: activePanel === 'queue',
+      className: 'md:hidden'
+    },
   ];
 
   return (
@@ -39,7 +48,7 @@ export default function LeftSidebar({
       <div className="flex flex-row md:flex-col items-center w-auto md:w-full flex-1 md:flex-none">
         {/* Menu Buttons Stack */}
         <div className="flex flex-row md:flex-col gap-2 md:gap-4 w-auto md:w-full px-0 md:px-2 flex-1 md:flex-none justify-around md:justify-start">
-          {menuItems.map(({ id, label, icon: Icon, action, isActive }) => (
+          {menuItems.map(({ id, label, icon: Icon, action, isActive, className }) => (
             <button
               key={id}
               onClick={action}
@@ -47,7 +56,7 @@ export default function LeftSidebar({
                 isActive 
                   ? 'text-amber-500 bg-amber-500/10 border-amber-500/20 shadow-[0_0_10px_rgba(245,158,11,0.05)]' 
                   : 'text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900 border-transparent'
-              }`}
+              } ${className || ''}`}
               title={label}
             >
               <Icon size={18} className="transition-transform group-hover:scale-105" />

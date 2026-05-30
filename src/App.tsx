@@ -196,7 +196,7 @@ export default function App() {
   const savedParamsRef = useRef<AudioParameters>({ ...defaultParams });
   const presetRef = useRef<HTMLDivElement>(null);
   // Workspace switching states
-  const [activePanel, setActivePanel] = useState<'eq' | 'master'>('master');
+  const [activePanel, setActivePanel] = useState<'eq' | 'master' | 'queue'>('master');
 
   // Settings & Theme preferences
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -943,7 +943,7 @@ export default function App() {
         <div className="flex-1 flex flex-col lg:flex-row p-4 md:p-6 overflow-y-auto lg:overflow-y-hidden lg:overflow-x-hidden gap-4 md:gap-6 h-full min-w-0 pb-36 md:pb-6">
           
           {/* Left Column: Visualizer & Mastering Console */}
-          <div className="flex-grow lg:flex-1 flex flex-col gap-6 h-auto lg:h-full min-w-0">
+          <div className={`flex-grow lg:flex-1 flex flex-col gap-6 h-auto lg:h-full min-w-0 ${activePanel === 'queue' ? 'hidden lg:flex' : 'flex'}`}>
           
           {/* Spectrum Analyzer Panel */}
           <Visualizer analyser={analyserNode} />
@@ -1125,7 +1125,7 @@ export default function App() {
 
         {/* Right Column: Batch Queue Panel */}
         <div 
-          className={`w-full lg:w-[400px] xl:w-[450px] rounded-xl border flex flex-col overflow-hidden shadow-lg relative transition-colors shrink-0 h-[380px] lg:h-full ${isDragging ? 'bg-zinc-800 border-amber-500' : 'bg-zinc-900 border-zinc-800'}`}
+          className={`w-full lg:w-[400px] xl:w-[450px] rounded-xl border flex flex-col overflow-hidden shadow-lg relative transition-colors shrink-0 h-[calc(100vh-12rem)] lg:h-full ${isDragging ? 'bg-zinc-800 border-amber-500' : 'bg-zinc-900 border-zinc-800'} ${activePanel === 'queue' ? 'flex' : 'hidden lg:flex'}`}
           onDragOver={handleDragOver}
           onDragLeave={handleDragLeave}
           onDrop={handleDrop}
