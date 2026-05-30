@@ -1114,7 +1114,7 @@ export default function App() {
                       onReset={() => resetSection('master')}
                       language={language}
                     >
-                      <Knob label={t.dialGain} value={params.gain} min={-24} max={24} defaultValue={6} unit="dB" color="rose" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'gain')} />
+                      <Knob label={t.dialGain} value={params.gain} min={-24} max={24} defaultValue={0} unit="dB" color="rose" onChange={v => handleSliderChange({ target: { value: String(v) } } as any, 'gain')} />
                     </SliderGroup>
                   </div>
                 </div>
