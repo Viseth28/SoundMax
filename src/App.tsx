@@ -1297,35 +1297,6 @@ export default function App() {
                   </select>
                 </div>
               </div>
-
-              <div className="space-y-3 bg-zinc-950/50 p-4 rounded border border-zinc-800/50">
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className="relative flex items-center justify-center w-5 h-5">
-                    <input type="checkbox" checked={exportConfig.sunoBypass} onChange={e => setExportConfig({...exportConfig, sunoBypass: e.target.checked})} className="peer sr-only" />
-                    <div className="w-5 h-5 border-2 border-zinc-600 rounded bg-zinc-900 peer-checked:bg-amber-500 peer-checked:border-amber-500 transition-colors"></div>
-                    <X size={12} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity rotate-45 scale-110" style={{clipPath:'inset(0 0 0 0)'}} />
-                  </div>
-                  <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">SUNO Bypass (Watermark Strip)</span>
-                </label>
-                
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className="relative flex items-center justify-center w-5 h-5">
-                    <input type="checkbox" checked={exportConfig.vocalClarity} onChange={e => setExportConfig({...exportConfig, vocalClarity: e.target.checked})} className="peer sr-only" />
-                    <div className="w-5 h-5 border-2 border-zinc-600 rounded bg-zinc-900 peer-checked:bg-amber-500 peer-checked:border-amber-500 transition-colors"></div>
-                    <X size={12} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity rotate-45 scale-110" style={{clipPath:'inset(0 0 0 0)'}} />
-                  </div>
-                  <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">Vocal Clarity Boost (3-5kHz)</span>
-                </label>
-                
-                <label className="flex items-center gap-3 cursor-pointer group">
-                  <div className="relative flex items-center justify-center w-5 h-5">
-                    <input type="checkbox" checked={exportConfig.softClip} onChange={e => setExportConfig({...exportConfig, softClip: e.target.checked})} className="peer sr-only" />
-                    <div className="w-5 h-5 border-2 border-zinc-600 rounded bg-zinc-900 peer-checked:bg-amber-500 peer-checked:border-amber-500 transition-colors"></div>
-                    <X size={12} className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity rotate-45 scale-110" style={{clipPath:'inset(0 0 0 0)'}} />
-                  </div>
-                  <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">Soft Clip Ceiling (Prevent Clip)</span>
-                </label>
-              </div>
             </div>
             
             <div className="px-6 py-4 bg-zinc-950 border-t border-zinc-800 flex justify-end gap-3">
