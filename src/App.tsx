@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Upload, Play, Pause, Settings, X, Download, Sparkles, Video, Volume2, VolumeX, Music, RotateCcw, Power, ChevronDown } from 'lucide-react';
+import { Upload, Play, Pause, Settings, X, Download, Sparkles, Video, Volume2, VolumeX, Music, RotateCcw, Power, ChevronDown, HelpCircle } from 'lucide-react';
 import { AudioGraph, type AudioParameters, defaultParams, presets } from './audioEngine';
 import { encodeWAV } from './wavEncoder';
 import { encodeMP3 } from './mp3Encoder';
@@ -200,6 +200,7 @@ export default function App() {
 
   // Settings & Theme preferences
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const [language, setLanguage] = useState<'en' | 'kh'>(() => (localStorage.getItem('soundmax_lang') as 'en' | 'kh') || 'en');
   const [theme, setTheme] = useState<'dark' | 'light'>(() => (localStorage.getItem('soundmax_theme') as 'dark' | 'light') || 'dark');
 
@@ -936,6 +937,7 @@ export default function App() {
           activePanel={activePanel}
           onPanelChange={setActivePanel}
           onOpenSettings={() => setShowSettingsModal(true)}
+          onOpenHelp={() => setShowHelpModal(true)}
           language={language}
         />
 
@@ -1500,7 +1502,149 @@ export default function App() {
         </div>
       )}
 
+      {/* Help / Guide Modal */}
+      {showHelpModal && (
+        <div className="fixed inset-0 bg-zinc-950/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-2xl overflow-hidden shadow-2xl animate-in fade-in zoom-in-95 duration-150 flex flex-col max-h-[85vh]">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/50 shrink-0">
+              <h2 className="text-base sm:text-lg font-bold text-white flex items-center gap-2 font-sans uppercase">
+                <HelpCircle size={20} className="text-amber-500" />
+                {language === 'kh' ? 'សេចក្តីណែនាំអំពីការប្រើប្រាស់' : 'How to Use SoundMax'}
+              </h2>
+              <div className="flex items-center gap-3">
+                {/* Quick Language Toggle Button inside Modal Header */}
+                <button 
+                  onClick={() => setLanguage(language === 'en' ? 'kh' : 'en')}
+                  className="px-2.5 py-1 bg-zinc-800 hover:bg-zinc-700 text-[10px] font-bold text-amber-500 rounded border border-zinc-700 transition-all cursor-pointer"
+                >
+                  {language === 'en' ? 'KH 🇰🇭' : 'EN 🇺🇸'}
+                </button>
+                <button onClick={() => setShowHelpModal(false)} className="text-zinc-400 hover:text-white transition-colors cursor-pointer">
+                  <X size={20} />
+                </button>
+              </div>
+            </div>
 
+            {/* Modal Scrollable Body */}
+            <div className="p-6 space-y-6 overflow-y-auto flex-1 text-zinc-300 text-sm leading-relaxed">
+              {/* General Intro */}
+              <div className="space-y-2">
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-amber-500 font-sans">
+                  {language === 'kh' ? 'អំពីកម្មវិធី (About SoundMax)' : 'About SoundMax'}
+                </h3>
+                <p className="text-xs sm:text-sm text-zinc-400">
+                  {language === 'kh' 
+                    ? 'SoundMax គឺជាប្រព័ន្ធម៉ាស្ទ័រសំឡេងឌីជីថលកម្រិតអាជីព ដែលជួយបង្កើនគុណភាពបទចម្រៀងឱ្យណែន ច្បាស់ លាន់ ពីរោះស្មើគ្នាល្អ និងពង្រីកសម្លេង stereo ឱ្យទូលាយទាក់ទាញ ត្រៀមជាស្រេចសម្រាប់ចែកចាយលើប្រព័ន្ធ streaming និងបណ្តាញសង្គមផ្សេងៗ។'
+                    : 'SoundMax is a professional digital audio mastering suite designed to enhance the presence, punch, warmth, and stereo imaging of your tracks—fully optimized for commercial streaming platforms, clubs, and social distribution.'
+                  }
+                </p>
+              </div>
+
+              {/* 1. Mastering Console Section */}
+              <div className="space-y-4">
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-amber-500 font-sans">
+                  {language === 'kh' ? '១. ផ្ទាំងបញ្ជាម៉ាស្ទ័រ (1. Mastering Console)' : '1. Mastering Console'}
+                </h3>
+                
+                <div className="space-y-3.5 pl-2 sm:pl-4 border-l border-zinc-800">
+                  {/* EQ / Tone */}
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wide">
+                      {language === 'kh' ? '• ផ្នែកបាសនិងប្លង់សម្លេង (EQ / TONE)' : '• EQ / TONE'}
+                    </h4>
+                    <p className="text-[11px] sm:text-xs text-zinc-400 mt-1">
+                      <strong>{language === 'kh' ? 'BASS' : 'BASS'}:</strong> {language === 'kh' ? 'បង្កើនឬបន្ថយកម្លាំងបុក និងទម្ងន់នៃប្រេកង់បាសទាប។' : 'Boosts or cuts low-frequency punch and weight.'} <br/>
+                      <strong>{language === 'kh' ? 'DEEP' : 'DEEP'}:</strong> {language === 'kh' ? 'បង្កើនកម្រិតរំញ័រ sub-bass បាតក្រោម ធ្វើឱ្យបាសរងំពីរោះជ្រៅ។' : 'Targets extreme sub-bass rumble and depth.'} <br/>
+                      <strong>{language === 'kh' ? 'MID' : 'MID'}:</strong> {language === 'kh' ? 'គ្រប់គ្រងភាពកក់ក្តៅ និងភាពច្បាស់លេចធ្លោនៃសម្លេងច្រៀង ឬឧបករណ៍ភ្លេងកណ្តាល។' : 'Shapes the presence and warmth of vocals and mid-range instruments.'}
+                    </p>
+                  </div>
+
+                  {/* Dynamics */}
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wide">
+                      {language === 'kh' ? '• ផ្នែកថាមវន្តសម្លេង (DYNAMICS / COMPRESSION)' : '• DYNAMICS'}
+                    </h4>
+                    <p className="text-[11px] sm:text-xs text-zinc-400 mt-1">
+                      <strong>{language === 'kh' ? 'COMP' : 'COMP (Threshold)'}:</strong> {language === 'kh' ? 'កំណត់កម្រិតកាត់បង្រួមដើម្បីគ្រប់គ្រងភាពខ្លាំង-ខ្សោយឱ្យស្មើល្អ និងសម្លេងណែនណាប់។' : 'Sets the threshold. Tames wild peaks and glues the dynamic elements together.'} <br/>
+                      <strong>{language === 'kh' ? 'RATIO' : 'RATIO'}:</strong> {language === 'kh' ? 'កម្រិតកម្លាំងនៃការកាត់សម្លេង។ កាន់តែខ្ពស់ សម្លេងកាន់តែណែននិងបុកបន្តិច។' : 'The compression strength. Higher ratios yield a tighter, punchier master.'} <br/>
+                      <strong>{language === 'kh' ? 'LIMIT' : 'LIMIT (Ceiling)'}:</strong> {language === 'kh' ? 'កំណត់ពិដានកម្រិតសម្លេងចេញខ្ពស់បំផុត ការពារមិនឱ្យបែករ៉ែ ឬបាក់សម្លេង។' : 'Controls the output ceiling. Clips and brickwalls peaks to prevent digital distortion.'}
+                    </p>
+                  </div>
+
+                  {/* Color / Saturation */}
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wide">
+                      {language === 'kh' ? '• ផ្នែកបន្ថែមពណ៌សម្លេង (COLOR / TONE)' : '• COLOR / TONE'}
+                    </h4>
+                    <p className="text-[11px] sm:text-xs text-zinc-400 mt-1">
+                      <strong>{language === 'kh' ? 'DRIVE' : 'DRIVE (Saturation)'}:</strong> {language === 'kh' ? 'បន្ថែមសម្លេងសង្កៀតបែបអានឡូក (Analogue Saturation) បង្កើនភាពកក់ក្តៅ និងភាពណែននៃបទភ្លេង។' : 'Adds subtle analogue saturation. Enriches the master with warm harmonics and analog glue.'}
+                    </p>
+                  </div>
+
+                  {/* Space / Mono */}
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wide">
+                      {language === 'kh' ? '• ផ្នែកលំហសម្លេង (SPACE / MONO)' : '• SPACE / MONO'}
+                    </h4>
+                    <p className="text-[11px] sm:text-xs text-zinc-400 mt-1">
+                      <strong>{language === 'kh' ? 'WIDTH' : 'WIDTH (Stereo Width)'}:</strong> {language === 'kh' ? 'ពង្រីកទំហំសម្លេងឆ្វេង-ស្តាំឱ្យកាន់តែលាន់ធំទូលាយ ឬបង្រួមមកកណ្តាល (Mono)។' : 'Expands the stereo image for wider ambient width or centers it close to mono.'} <br/>
+                      <strong>{language === 'kh' ? 'VERB' : 'VERB (Reverb Mix)'}:</strong> {language === 'kh' ? 'បន្ថែមសម្លេងរលករំញ័រក្នុងលំហបន្ទប់ ធ្វើឱ្យបទភ្លេងមានជម្រៅបីវិមាត្រ។' : 'Blends in three-dimensional room reverb space and depth.'} <br/>
+                      <strong>{language === 'kh' ? 'ECHO' : 'ECHO (Tape Delay)'}:</strong> {language === 'kh' ? 'បង្កើតសម្លេងឆ្លុះបញ្ចាំងរត់ឆ្វេងស្តាំច្រំដែលៗ បែបម៉ាស៊ីនខ្សែអាត់បុរាណ។' : 'Generates rhythmic, warm stereo delay echo repetitions.'}
+                    </p>
+                  </div>
+
+                  {/* Master Output */}
+                  <div>
+                    <h4 className="text-xs font-bold text-zinc-200 uppercase tracking-wide">
+                      {language === 'kh' ? '• កម្រិតសម្លេងចេញចុងក្រោយ (MASTER OUTPUT)' : '• MASTER OUTPUT'}
+                    </h4>
+                    <p className="text-[11px] sm:text-xs text-zinc-400 mt-1">
+                      <strong>{language === 'kh' ? 'GAIN' : 'GAIN'}:</strong> {language === 'kh' ? 'កម្រិតសម្លេងចេញចុងក្រោយសម្រាប់ម៉ាស្ទ័រទាំងមូល។' : 'Adjusts the final digital output volume/loudness level.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* 2. 10-Band EQ Section */}
+              <div className="space-y-2">
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-amber-500 font-sans">
+                  {language === 'kh' ? '២. អេក្វាឡឺហ្សឺ ១០ ប៊ែន (2. 10-Band Graphic EQ)' : '2. 10-Band Graphic EQ'}
+                </h3>
+                <p className="text-xs text-zinc-400 pl-2 sm:pl-4">
+                  {language === 'kh'
+                    ? 'អនុញ្ញាតឱ្យអ្នកកែប្រែប្រេកង់សំឡេងលម្អិតទាំង ១០ ក្រុមពី ៣១Hz (បាសជ្រៅបំផុត) ដល់ ១៦kHz (សម្លេងខ្យល់មុតស្រួច)។ ទាញប៊ូតុងឡើងលើដើម្បីបង្កើន (Boost) និងចុះក្រោមដើម្បីបន្ថយ (Cut)។ អ្នកអាចអូសវាទៅឆ្វេងនិងស្តាំលើទូរស័ព្ទដៃដើម្បីមើលគ្រប់ក្រុម fader ទាំងអស់។'
+                    : 'Provides precision frequency-shaping across 10 distinct octave bands from 31Hz (deep sub-bass rumble) to 16kHz (crisp air brilliance). Slide up to boost, and down to cut frequencies. Swipe horizontally on mobile to access all faders comfortably.'
+                  }
+                </p>
+              </div>
+
+              {/* 3. General Workflow / Tips */}
+              <div className="space-y-2">
+                <h3 className="text-xs font-extrabold uppercase tracking-wider text-amber-500 font-sans">
+                  {language === 'kh' ? '៣. របៀបដំណើរការរហ័ស (Quick Workflow)' : '3. Quick Workflow'}
+                </h3>
+                <ol className="list-decimal list-inside text-[11px] sm:text-xs text-zinc-400 pl-2 sm:pl-4 space-y-1">
+                  <li>{language === 'kh' ? 'ទាញទម្លាក់ ឬបន្ថែមឯកសារសំឡេងរបស់អ្នកទៅក្នុងផ្នែក "Queue" (បញ្ជី)' : 'Upload your tracks into the "Queue" tab.'}</li>
+                  <li>{language === 'kh' ? 'ចុចលើចម្រៀងក្នុងបញ្ជីដើម្បីចាក់ស្តាប់ និងសារ៉េប៉ារ៉ាម៉ែត្រម៉ាស្ទ័រភ្លាមៗ' : 'Select a track to play and start turning the dials.'}</li>
+                  <li>{language === 'kh' ? 'ប្រើប្រាស់មុខងារ "AUTO-MASTER" ដើម្បីឱ្យប្រព័ន្ធ AI គណនាលៃលកប៉ារ៉ាម៉ែត្រស្វ័យប្រវត្តិតែមួយវិនាទី' : 'Use "AUTO-MASTER" for instantaneous, AI-calculated automatic settings.'}</li>
+                  <li>{language === 'kh' ? 'ចុចប៊ូតុង "Export Config" ពណ៌លឿងនៅផ្នែកខាងលើដើម្បីទាញយកឯកសារមេដែលរួចរាល់' : 'Click the yellow "Export Config" button at the top to download your mastered track.'}</li>
+                </ol>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-6 py-4 bg-zinc-950 border-t border-zinc-800 flex justify-end shrink-0">
+              <button
+                onClick={() => setShowHelpModal(false)}
+                className="px-6 py-2 bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold rounded shadow-[0_0_15px_rgba(245,158,11,0.4)] transition-all cursor-pointer font-sans"
+              >
+                {language === 'kh' ? 'យល់ព្រម' : 'Got it'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Media Controller Bar */}
       <div className="fixed bottom-16 left-0 right-0 md:relative md:bottom-auto h-16 md:h-20 bg-zinc-900/95 md:bg-zinc-900 border-t border-zinc-800 px-4 md:px-6 flex flex-row items-center justify-between shadow-2xl z-40 select-none backdrop-blur-md md:backdrop-blur-none flex-shrink-0">

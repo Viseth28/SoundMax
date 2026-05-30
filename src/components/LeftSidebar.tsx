@@ -2,13 +2,15 @@ import {
   Sliders, 
   Music,
   ListMusic,
-  Settings
+  Settings,
+  HelpCircle
 } from 'lucide-react';
 
 interface LeftSidebarProps {
   activePanel: 'eq' | 'master' | 'queue';
   onPanelChange: (panel: 'eq' | 'master' | 'queue') => void;
   onOpenSettings: () => void;
+  onOpenHelp: () => void;
   language?: 'en' | 'kh';
 }
 
@@ -16,6 +18,7 @@ export default function LeftSidebar({
   activePanel,
   onPanelChange,
   onOpenSettings,
+  onOpenHelp,
   language = 'en',
 }: LeftSidebarProps) {
   const menuItems = [
@@ -75,8 +78,15 @@ export default function LeftSidebar({
         </div>
       </div>
 
-      {/* Bottom Section: Settings Icon & Clean Footer Accent */}
+      {/* Bottom Section: Help & Settings Icons & Clean Footer Accent */}
       <div className="flex flex-row md:flex-col items-center gap-2 md:gap-3 w-auto md:w-full shrink-0 pl-3 md:pl-0">
+        <button
+          onClick={onOpenHelp}
+          className="w-9 h-9 md:w-10 md:h-10 rounded-md md:rounded-lg flex items-center justify-center text-zinc-500 hover:text-amber-500 hover:bg-zinc-900 border border-transparent hover:border-zinc-800 transition-all cursor-pointer group"
+          title={language === 'kh' ? 'ជំនួយ' : 'Help'}
+        >
+          <HelpCircle size={18} className="transition-transform group-hover:scale-110" />
+        </button>
         <button
           onClick={onOpenSettings}
           className="w-9 h-9 md:w-10 md:h-10 rounded-md md:rounded-lg flex items-center justify-center text-zinc-500 hover:text-amber-500 hover:bg-zinc-900 border border-transparent hover:border-zinc-800 transition-all cursor-pointer group"
