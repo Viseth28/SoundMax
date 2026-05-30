@@ -1870,10 +1870,8 @@ function Visualizer({ analyser }: { analyser: AnalyserNode | null }) {
       const height = canvas.height;
       ctx.clearRect(0, 0, width, height);
 
-      const isLight = document.body.classList.contains('light-mode');
-
       // Draw background
-      ctx.fillStyle = isLight ? 'rgba(244, 244, 245, 1)' : 'rgba(9, 9, 11, 1)'; 
+      ctx.fillStyle = 'rgba(9, 9, 11, 1)'; 
       ctx.fillRect(0, 0, width, height);
 
       // ── Calculate RMS & estimated LUFS ──
@@ -1927,9 +1925,9 @@ function Visualizer({ analyser }: { analyser: AnalyserNode | null }) {
       }
 
       // Draw Meters Area (right 150 pixels)
-      ctx.fillStyle = isLight ? '#e4e4e7' : '#18181b'; 
+      ctx.fillStyle = '#18181b'; 
       ctx.fillRect(specWidth, 0, 150, height);
-      ctx.fillStyle = isLight ? '#f4f4f5' : '#09090b'; 
+      ctx.fillStyle = '#09090b'; 
       ctx.fillRect(specWidth + 10, 10, 30, height - 20); 
       ctx.fillRect(specWidth + 50, 10, 30, height - 20); 
 
@@ -1946,7 +1944,7 @@ function Visualizer({ analyser }: { analyser: AnalyserNode | null }) {
         ctx.fillStyle = meterGrad;
         ctx.fillRect(xOffset, height - 10 - fillH, 30, fillH);
 
-        ctx.fillStyle = isLight ? '#27272a' : '#a1a1aa';
+        ctx.fillStyle = '#a1a1aa';
         ctx.font = '8px sans-serif';
         ctx.fillText(title, xOffset + 4, height - 12);
         ctx.fillText(`${Math.round(dbVal)}`, xOffset + 4, 18);
@@ -1956,10 +1954,10 @@ function Visualizer({ analyser }: { analyser: AnalyserNode | null }) {
       drawMeterBar(specWidth + 50, lufsEst, 'LUFS');
 
       // Draw guidelines
-      ctx.strokeStyle = isLight ? 'rgba(9,9,11,0.15)' : 'rgba(255,255,255,0.2)';
+      ctx.strokeStyle = 'rgba(255,255,255,0.15)';
       ctx.lineWidth = 1;
       ctx.font = '7px sans-serif';
-      ctx.fillStyle = isLight ? '#3f3f46' : '#a1a1aa';
+      ctx.fillStyle = '#a1a1aa';
 
       // Guide for -14dB (Streaming Standard)
       const y14 = 10 + (1 - (-14 + 60) / 60) * (height - 20);
@@ -1984,7 +1982,7 @@ function Visualizer({ analyser }: { analyser: AnalyserNode | null }) {
   }, [analyser]);
 
   return (
-    <div className="w-full h-[180px] flex-shrink-0 bg-zinc-950 rounded-lg overflow-hidden shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] border border-zinc-800/50">
+    <div className="w-full h-[180px] flex-shrink-0 bg-zinc-950 rounded-lg overflow-hidden shadow-[inset_0_0_10px_rgba(0,0,0,0.8)] border border-zinc-800/50 visualizer-container">
       <canvas ref={canvasRef} className="w-full h-full" width={1024} height={360}></canvas>
     </div>
   );

@@ -57,138 +57,158 @@ input[type="range"] {
 ──────────────────────────────────────────────────────────────── */
 
 body.light-mode {
-  background-color: #f4f4f5 !important;
+  background-color: #f1f3f5 !important; /* Premium Warm Platinum Gray Dashboard Chassis */
   color: #09090b !important;
   transition: background-color 0.25s ease, color 0.25s ease;
 }
 
-body.light-mode .bg-zinc-950 {
-  background-color: #f4f4f5 !important;
-}
-
+/* Make all main console panels a beautiful, pure white paper card with premium subtle shadows */
 body.light-mode .bg-zinc-900 {
-  background-color: #e4e4e7 !important;
+  background-color: #ffffff !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.02) !important;
 }
 
-body.light-mode .bg-zinc-800 {
-  background-color: #d4d4d8 !important;
+/* Inset fader pockets, queue cells, and input fields get a beautiful light warm-platinum finish */
+body.light-mode .bg-zinc-950 {
+  background-color: #f8f9fa !important;
 }
 
-body.light-mode .bg-zinc-950\/50 {
-  background-color: rgba(244, 244, 245, 0.6) !important;
+/* Deep background panels for overlays and modals - dark overlay for focus */
+body.light-mode .bg-zinc-950\/80 {
+  background-color: rgba(9, 9, 11, 0.35) !important;
 }
 
+/* Unified Light Theme Sidebar (No more harsh black sidebar!) */
+body.light-mode .bg-zinc-950\/95 {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border-right-color: #e9ecef !important;
+  border-top-color: #e9ecef !important;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.02) !important;
+}
+
+/* Unified Light Theme Bottom Media Player Bar (No more harsh black player!) */
+body.light-mode .bg-zinc-900\/95,
+body.light-mode .md\:bg-zinc-900 {
+  background-color: #ffffff !important;
+  border-top-color: #e9ecef !important;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.03) !important;
+}
+
+/* Modals, popups, and dropdown menus */
 body.light-mode .bg-zinc-900\/50 {
-  background-color: rgba(228, 228, 231, 0.6) !important;
+  background-color: rgba(255, 255, 255, 0.75) !important;
 }
 
 body.light-mode .bg-zinc-950\/40 {
-  background-color: rgba(244, 244, 245, 0.4) !important;
+  background-color: rgba(248, 249, 250, 0.4) !important;
 }
 
 body.light-mode .bg-zinc-900\/80 {
-  background-color: rgba(228, 228, 231, 0.8) !important;
+  background-color: rgba(255, 255, 255, 0.85) !important;
 }
 
+/* Premium Borders - sharp, thin silver lines */
 body.light-mode .border-zinc-900 {
-  border-color: #e4e4e7 !important;
+  border-color: #e9ecef !important;
 }
 
 body.light-mode .border-zinc-800 {
-  border-color: #d4d4d8 !important;
+  border-color: #e9ecef !important;
 }
 
 body.light-mode .border-zinc-800\/50 {
-  border-color: rgba(212, 212, 216, 0.5) !important;
+  border-color: rgba(233, 236, 239, 0.5) !important;
 }
 
 body.light-mode .border-zinc-800\/60 {
-  border-color: rgba(212, 212, 216, 0.6) !important;
+  border-color: rgba(233, 236, 239, 0.6) !important;
 }
 
 body.light-mode .border-zinc-850 {
-  border-color: #d4d4d8 !important;
+  border-color: #e9ecef !important;
 }
 
+body.light-mode .border-zinc-700 {
+  border-color: #e9ecef !important;
+}
+
+body.light-mode .border-zinc-700\/30 {
+  border-color: rgba(233, 236, 239, 0.3) !important;
+}
+
+/* High Contrast Fonts */
 body.light-mode .text-white {
   color: #09090b !important;
 }
 
-body.light-mode .text-zinc-50 {
-  color: #09090b !important;
-}
-
+body.light-mode .text-zinc-50,
 body.light-mode .text-zinc-100 {
   color: #09090b !important;
 }
 
 body.light-mode .text-zinc-200 {
-  color: #18181b !important;
+  color: #1a1d24 !important;
 }
 
 body.light-mode .text-zinc-300 {
-  color: #27272a !important;
+  color: #343a40 !important;
 }
 
 body.light-mode .text-zinc-400 {
-  color: #3f3f46 !important;
+  color: #495057 !important; /* Highly visible slate-charcoal */
 }
 
 body.light-mode .text-zinc-500 {
-  color: #52525b !important;
+  color: #6c757d !important; /* Visible medium gray */
 }
 
 body.light-mode .text-zinc-600 {
-  color: #71717a !important;
+  color: #868e96 !important;
 }
 
+body.light-mode .text-zinc-700 {
+  color: #adb5bd !important;
+}
+
+/* Inset fader technical readout boxes */
 body.light-mode .bg-\[\#050608\]\/90 {
-  background-color: rgba(244, 244, 245, 0.9) !important;
-  border-color: #d4d4d8 !important;
+  background-color: #f1f3f5 !important;
+  border-color: #ced4da !important;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Inactive EQ Grid lines and fader tracks */
+body.light-mode .bg-zinc-800 {
+  background-color: #e9ecef !important;
 }
 
 body.light-mode .bg-zinc-700 {
-  background-color: #d4d4d8 !important;
+  background-color: #ced4da !important; /* Clean fader track line */
 }
 
 body.light-mode .bg-zinc-700\/50 {
-  background-color: rgba(212, 212, 216, 0.5) !important;
+  background-color: rgba(206, 212, 218, 0.5) !important;
 }
 
-body.light-mode .bg-zinc-950\/80 {
-  background-color: rgba(0, 0, 0, 0.4) !important;
-}
-
-body.light-mode .bg-zinc-950\/60 {
-  background-color: rgba(244, 244, 245, 0.6) !important;
-}
-
-body.light-mode .border-zinc-700 {
-  border-color: #d4d4d8 !important;
-}
-
-body.light-mode .border-zinc-700\/30 {
-  border-color: rgba(161, 161, 170, 0.3) !important;
-}
-
+/* Hover and Interactions */
 body.light-mode .hover\:bg-zinc-900:hover {
-  background-color: #e4e4e7 !important;
+  background-color: #f8f9fa !important;
 }
 
 body.light-mode .hover\:bg-zinc-800:hover {
-  background-color: #d4d4d8 !important;
+  background-color: #e9ecef !important;
 }
 
 body.light-mode .hover\:bg-zinc-700:hover {
-  background-color: #c4c4c7 !important;
+  background-color: #dee2e6 !important;
 }
 
 body.light-mode .hover\:bg-zinc-800\/30:hover {
-  background-color: rgba(212, 212, 216, 0.35) !important;
+  background-color: rgba(233, 236, 239, 0.4) !important;
 }
 
 body.light-mode .hover\:text-zinc-300:hover {
-  color: #18181b !important;
+  color: #212529 !important;
 }
 
 body.light-mode .hover\:text-white:hover {
@@ -196,21 +216,71 @@ body.light-mode .hover\:text-white:hover {
 }
 
 body.light-mode .bg-amber-500\/10 {
-  background-color: rgba(245, 158, 11, 0.15) !important;
+  background-color: rgba(245, 158, 11, 0.1) !important;
 }
 
 body.light-mode .border-amber-500\/20 {
-  border-color: rgba(245, 158, 11, 0.3) !important;
+  border-color: rgba(245, 158, 11, 0.2) !important;
 }
 
 body.light-mode .border-transparent {
   border-color: transparent !important;
 }
 
-body.light-mode .stroke-tick-inactive {
-  stroke: rgba(9, 9, 11, 0.15) !important;
+/* ────────────────────────────────────────────────────────────────
+   PREMIUM DETAILED CONTROLS IN LIGHT MODE
+──────────────────────────────────────────────────────────────── */
+
+/* Brand Header Title Contrast Fix:
+   Yellow text on a light background is unreadable. We change it to a gorgeous
+   bronze gold / deep amber which has great visibility and looks highly luxury. */
+body.light-mode header h1 {
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  background-clip: unset !important;
+  color: #b45309 !important; /* Rich golden bronze */
+  font-weight: 800 !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Embedded Dark Glass Visualizer Bezel */
+body.light-mode .visualizer-container {
+  background-color: #09090c !important;
+  border-color: #ced4da !important;
+  box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.8), 0 1px 3px rgba(0, 0, 0, 0.05) !important;
+}
+
+/* Premium Brushed Silver Aluminum Knob styling in Light Mode */
+body.light-mode .knob-center-cap {
+  fill: #e9ecef !important; /* Silver radial fill */
+  stroke: #adb5bd !important; /* Sharp bezel boundary line */
+}
+
+body.light-mode .knob-metal-rim {
+  stroke: #ced4da !important; /* Bright chrome outer circle */
+}
+
+body.light-mode .knob-needle {
+  stroke: #212529 !important; /* Solid high-contrast black pointer needle */
 }
 
 body.light-mode .knob-track-bg {
-  stroke: rgba(9, 9, 11, 0.1) !important;
+  fill: #ffffff !important; /* White interior */
+  stroke: #dee2e6 !important; /* Light track outline */
+}
+
+body.light-mode .stroke-tick-inactive {
+  stroke: rgba(9, 9, 11, 0.15) !important; /* Visible markings */
+}
+
+/* Remove low-contrast neon glow drop-shadow filters on dials in light mode */
+body.light-mode svg line,
+body.light-mode svg circle,
+body.light-mode svg path {
+  filter: none !important;
+}
+
+/* Fader sliders scale ticks and active state handles */
+body.light-mode input[type="range"] {
+  accent-color: #d97706 !important; /* Rich amber-bronze for active elements */
 }

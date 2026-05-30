@@ -316,6 +316,7 @@ export default function Knob({
             fill="none"
             stroke="url(#metal-rim-gradient)"
             strokeWidth="1.2"
+            className="knob-metal-rim"
           />
 
           {/* Hardware Knob Center cap (Machined Metal radial gradient) */}
@@ -326,6 +327,7 @@ export default function Knob({
             fill={`url(#center-cap-${color})`}
             stroke="#07080a"
             strokeWidth="1.2"
+            className="knob-center-cap"
           />
 
           {/* Active indicator needle / line (White-hot engraved indicator) */}
@@ -344,6 +346,7 @@ export default function Knob({
               stroke="#ffffff"
               strokeWidth="2.2"
               strokeLinecap="round"
+              className="knob-needle"
               style={{
                 filter: isDragging ? `drop-shadow(0 0 3px ${selectedColor.stroke})` : 'drop-shadow(0 0 1px rgba(255,255,255,0.7))',
               }}
