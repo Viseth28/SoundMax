@@ -1075,7 +1075,7 @@ export default function App() {
                 {/* ROW 2: Color, Space & Master */}
                 <div className="grid grid-cols-2 md:flex md:flex-row justify-around items-center w-full gap-6 md:gap-0">
                   {/* Saturation Color Section */}
-                  <div className="col-span-1 flex-1 flex justify-center w-full order-1 md:order-none">
+                  <div className="col-span-1 flex-1 flex justify-center w-full order-2 md:order-none">
                     <SliderGroup 
                       title={t.colorTone} 
                       isBypassed={bypassState.color} 
@@ -1090,7 +1090,7 @@ export default function App() {
                   <div className="hidden md:block w-px h-28 bg-zinc-800/60 mx-4"></div>
 
                   {/* Space / Mono Section */}
-                  <div className="col-span-2 flex-1 flex justify-center w-full order-3 md:order-none">
+                  <div className="col-span-2 flex-1 flex justify-center w-full order-1 md:order-none">
                     <SliderGroup 
                       title={t.spaceMono} 
                       isBypassed={bypassState.space} 
@@ -1107,7 +1107,7 @@ export default function App() {
                   <div className="hidden md:block w-px h-28 bg-zinc-800/60 mx-4"></div>
                   
                   {/* Master */}
-                  <div className="col-span-1 flex-1 flex justify-center w-full order-2 md:order-none">
+                  <div className="col-span-1 flex-1 flex justify-center w-full order-3 md:order-none">
                     <SliderGroup 
                       title={t.masterOutput} 
                       showBypass={false} 
