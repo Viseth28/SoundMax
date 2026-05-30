@@ -5,6 +5,7 @@
   --color-slate-800: #1a2b4c;
   --color-blue-500: #3b82f6;
   --color-cyan-500: #00d2ff;
+  --font-sans: 'Inter', 'Kantumruy Pro', system-ui, -apple-system, sans-serif;
 }
 
 body {
@@ -12,7 +13,7 @@ body {
   padding: 0;
   background-color: var(--color-slate-900);
   color: white;
-  font-family: 'Inter', system-ui, Avenir, Helvetica, Arial, sans-serif;
+  font-family: 'Inter', 'Kantumruy Pro', system-ui, Avenir, Helvetica, Arial, sans-serif;
   overflow: hidden; /* Prevent scrolling for SPA */
 }
 
