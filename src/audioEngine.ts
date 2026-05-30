@@ -110,6 +110,7 @@ export class AudioGraph {
     const compressor = this.ctx.createDynamicsCompressor();
     compressor.attack.value = 0.005;
     compressor.release.value = 0.050;
+    compressor.knee.value = 10; // Smooth knee for console-grade bus compression
 
     const echoDelay = this.ctx.createDelay();
     echoDelay.delayTime.value = 0.3; // 300ms
@@ -137,6 +138,7 @@ export class AudioGraph {
     limiter.attack.value = 0.001;
     limiter.release.value = 0.010;
     limiter.ratio.value = 20;
+    limiter.knee.value = 0; // Hard knee for absolute brickwall limiting ceiling
 
     const masterGain = this.ctx.createGain();
 

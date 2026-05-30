@@ -25,10 +25,19 @@ export async function encodeFLAC(audioBuffer: AudioBuffer, bitDepth: 16 | 24, _m
   // Each chunk represents roughly 0.5s of audio
   const sampleBlockSize = Math.floor(sampleRate * 0.5); 
   
+  const lsbScale = bitDepth === 24 ? 1 / 8388608 : 1 / 32768;
+  
   for (let i = 0; i < channels[0].length; i += sampleBlockSize) {
     const chunkChannels: Float32Array[] = [];
     for (let c = 0; c < numChannels; c++) {
-      chunkChannels.push(channels[c].subarray(i, i + sampleBlockSize));
+      const sub = channels[c].subarray(i, i + sampleBlockSize);
+      // Create a temporary copy to avoid mutating the original buffer in memory
+      const ditheredSub = new Float32Array(sub.length);
+      for (let s = 0; s < sub.length; s++) {
+        const dither = (Math.random() - Math.random()) * lsbScale;
+        ditheredSub[s] = Math.max(-1, Math.min(1, sub[s] + dither));
+      }
+      chunkChannels.push(ditheredSub);
     }
 
     const chunk = encoder.encode(chunkChannels);

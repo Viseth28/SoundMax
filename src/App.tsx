@@ -274,11 +274,15 @@ export default function App() {
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Processing' } : f));
           
           setVideoExportStatus('Mastering & rendering audio track...');
-          const offlineCtx = new OfflineAudioContext(2, Math.ceil(file.buffer.duration * exportConfig.sampleRate), exportConfig.sampleRate);
+          const arrayBuffer = await file.file.arrayBuffer();
+          const tempOfflineCtx = new OfflineAudioContext(2, 44100, exportConfig.sampleRate);
+          const nativeBuffer = await tempOfflineCtx.decodeAudioData(arrayBuffer);
+
+          const offlineCtx = new OfflineAudioContext(2, nativeBuffer.length, exportConfig.sampleRate);
           const offlineGraph = new AudioGraph(offlineCtx);
           offlineGraph.applyParameters(params);
           if (exportConfig.sunoBypass) offlineGraph.applySunoBypass();
-          offlineGraph.connectSource(file.buffer);
+          offlineGraph.connectSource(nativeBuffer);
           offlineGraph.start();
           const renderedBuffer = await offlineCtx.startRendering();
           const audioBlob = encodeWAV(renderedBuffer, exportConfig.sampleRate, 16);
@@ -311,11 +315,15 @@ export default function App() {
           if (!file.buffer) continue;
           setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Processing' } : f));
           setVideoExportStatus(`Mastering & rendering album track: ${file.name}...`);
-          const offlineCtx = new OfflineAudioContext(2, Math.ceil(file.buffer.duration * exportConfig.sampleRate), exportConfig.sampleRate);
+          const arrayBuffer = await file.file.arrayBuffer();
+          const tempOfflineCtx = new OfflineAudioContext(2, 44100, exportConfig.sampleRate);
+          const nativeBuffer = await tempOfflineCtx.decodeAudioData(arrayBuffer);
+
+          const offlineCtx = new OfflineAudioContext(2, nativeBuffer.length, exportConfig.sampleRate);
           const offlineGraph = new AudioGraph(offlineCtx);
           offlineGraph.applyParameters(params);
           if (exportConfig.sunoBypass) offlineGraph.applySunoBypass();
-          offlineGraph.connectSource(file.buffer);
+          offlineGraph.connectSource(nativeBuffer);
           offlineGraph.start();
           const renderedBuffer = await offlineCtx.startRendering();
           renderedBuffers.push(renderedBuffer);
@@ -848,9 +856,16 @@ export default function App() {
       
       setFiles(prev => prev.map(f => f.id === file.id ? { ...f, status: 'Processing' } : f));
       
+      const arrayBuffer = await file.file.arrayBuffer();
+      
+      // Decode audio data directly at the target export sample rate in an offline context
+      // to bypass hardware device limits and avoid double-resampling distortion.
+      const tempOfflineCtx = new OfflineAudioContext(2, 44100, exportConfig.sampleRate);
+      const nativeBuffer = await tempOfflineCtx.decodeAudioData(arrayBuffer);
+      
       const offlineCtx = new OfflineAudioContext(
         2, // Always render as Stereo (2 channels) for distributor compatibility (RouteNote etc)
-        Math.ceil(file.buffer.duration * exportConfig.sampleRate),
+        nativeBuffer.length,
         exportConfig.sampleRate
       );
       
@@ -861,7 +876,7 @@ export default function App() {
       if (exportConfig.vocalClarity) offlineGraph.applyVocalBoost();
       // Soft clip is handled by the limiter inherently in the graph with ceiling config
       
-      offlineGraph.connectSource(file.buffer);
+      offlineGraph.connectSource(nativeBuffer);
       offlineGraph.start();
       
       const renderedBuffer = await offlineCtx.startRendering();

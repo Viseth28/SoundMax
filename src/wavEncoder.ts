@@ -43,15 +43,23 @@ export function encodeWAV(audioBuffer: AudioBuffer, sampleRate: number, bitDepth
   }
 
   let offset = 44;
+  const lsb16 = 1 / 32768;
+  const lsb24 = 1 / 8388608;
+
   for (let i = 0; i < length; i++) {
     for (let channel = 0; channel < numChannels; channel++) {
       let sample = channels[channel][i];
-      sample = Math.max(-1, Math.min(1, sample));
 
       if (bitDepth === 16) {
+        // Apply 16-bit TPDF dither
+        const dither = (Math.random() - Math.random()) * lsb16;
+        sample = Math.max(-1, Math.min(1, sample + dither));
         sample = sample < 0 ? sample * 0x8000 : sample * 0x7FFF;
         view.setInt16(offset, sample, true);
       } else {
+        // Apply 24-bit TPDF dither
+        const dither = (Math.random() - Math.random()) * lsb24;
+        sample = Math.max(-1, Math.min(1, sample + dither));
         sample = sample < 0 ? sample * 0x800000 : sample * 0x7FFFFF;
         view.setInt8(offset, sample & 0xFF);
         view.setInt8(offset + 1, (sample >> 8) & 0xFF);

@@ -22,9 +22,15 @@ export async function encodeMP3(audioBuffer: AudioBuffer, metadata?: AudioMetada
     const leftInt16 = new Int16Array(leftChunk.length);
     const rightInt16 = new Int16Array(rightChunk.length);
 
+    const lsb16 = 1 / 32768;
     for (let j = 0; j < leftChunk.length; j++) {
-      let l = Math.max(-1, Math.min(1, leftChunk[j]));
-      let r = Math.max(-1, Math.min(1, rightChunk[j]));
+      // 16-bit TPDF dither noise
+      const ditherL = (Math.random() - Math.random()) * lsb16;
+      const ditherR = (Math.random() - Math.random()) * lsb16;
+      
+      let l = Math.max(-1, Math.min(1, leftChunk[j] + ditherL));
+      let r = Math.max(-1, Math.min(1, rightChunk[j] + ditherR));
+      
       leftInt16[j] = l < 0 ? l * 0x8000 : l * 0x7FFF;
       rightInt16[j] = r < 0 ? r * 0x8000 : r * 0x7FFF;
     }
